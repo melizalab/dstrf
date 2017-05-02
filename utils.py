@@ -50,8 +50,8 @@ def strf(resolution=50,time=50,maxfreq=8000,latency=0,frequency=0,A=0.25,sigma=0
     return (Gtf,tscale,f)
 
 def design_matrix(stims,rs,twidth):
-    X = np.vstack([np.hstack([sp.linalg.hankel(f[:-twidth+1],f[-twidth:]) for f in s]) for s in stims])
-    R = np.hstack(r[twidth-1:] for r in rs)
+    X = np.vstack([np.hstack([sp.linalg.hankel(f[:-twidth+2],f[-twidth:]) for f in s]) for s in stims])
+    R = np.hstack(r[twidth-2:] for r in rs)
     return X,R
 
 def ps_design(stims,rs,pwidth,twidth):
@@ -210,13 +210,14 @@ def load_sound_data(files,root="",windowtime=256,ovlerlap=10,f_min=500,f_max=800
         stims.append(Pxx)
     return stims,durations
 
-def load_spikes_data(files,root="",durations=[]):
+def load_spikes_data(files,root="",durations=[],ts_file=True,delim=" "):
     spikes_data = []
     spiky_data = []
     for d,f in enumerate(files):
         # load spike data
         dur = durations[d]
-        stim_spikes = [filter(lambda x: x >= 0 and x <= dur, s) for s in ts.read(open(root + f))[0]]
+        if ts_file: stim_spikes = [filter(lambda x: x >= 0 and x <= dur, s) for s in ts.read(open(root + f))[0]]
+        else: stim_spikes = [filter(lambda x: x >= 0 and x <= dur, map(float,s.split(delim))) for s in open(root + f)]
         spikes_data.append(stim_spikes)
         stim_spiky = [spk.SpikeTrain(s,[0,durations[d]]) for s in stim_spikes]
         spiky_data.append(stim_spiky)
@@ -336,33 +337,29 @@ def load_crcns(cell,stim_type,nspec,t_dsample,compress=1,gammatone=True,root="/h
     spikefiles = [f for f in next(walk(spikesroot))[2] if len(f.split(".")) == 2]
     stimfiles = [f.split(".")[0] + ".wav" for f in spikefiles]
 
-    stims,durations = load_sound_data(stimfiles, stimroot, dsample=t_dsample,sres=nspec,gammatone=True,compress=compress)
+    stims,durations = load_sound_data(stimfiles, stimroot, dsample=t_dsample,sres=nspec,gammatone=gammatone,compress=compress)
     spikes_data, spiky_data = load_spikes_data(spikefiles, spikesroot, durations)
     
     return stims,durations,spikes_data,spiky_data
 
 def posterior_predict_corr(model,stims,data,flatchain,t_dsample=1,psth_smooth=1,nsamples=100,bootstrap=False):
-    n_smpl_trials = 100
 
     idx = [None]
     smpl_idx = None
     MANY = []
-    traces = []
 
     for i in range(nsamples):
         while smpl_idx in idx:
             smpl_idx = np.random.randint(len(flatchain))
-        idx.append(smpl_idx)
+        if not bootstrap: idx.append(smpl_idx)
         smpl = flatchain[smpl_idx]
         model.set(smpl)
 
         resp_spiky = []
         for s in stims:
-            trace, spikes = model.run(s) 
-            V, thresh = trace.T
-            spky = spk.SpikeTrain(spikes,[0,len(V)])
+            trace, spikes = model.run(s)
+            spky = spk.SpikeTrain(spikes,[0,len(trace)])
             resp_spiky.append(spky)
-            traces.append(thresh)
         MANY.append(resp_spiky)
 
     corr = []
@@ -372,34 +369,88 @@ def posterior_predict_corr(model,stims,data,flatchain,t_dsample=1,psth_smooth=1,
         corr.append(thiscorr)
     return corr
 
-def dstrf_sample_validate(model,sample,stims,psth,spiky,t_dsample=1,psth_smooth=1,plt=True,sscale=0.1,figsize=(16,5)):
+def dstrf_sample_validate(model,sample,stims,psth,t_dsample=1,psth_smooth=1,plt=True,sscale=0.1,figsize=(16,5)):
     model.set(sample)
 
     smpl_corr = []
+    thresh = None
 
-    for s,p,k in zip(stims,psth,spiky):
+    for s,p in zip(stims,psth):
         trace, spikes = model.run(s) 
-        V, thresh = trace.T
-        height = max(thresh)
-        spad = height/10
-        V[spikes] = height
+        if np.ndim(trace) == 2: 
+            V, thresh = trace.T
+            height = max(thresh)
+            spad = height/10
+            V[spikes] = height
+        else: 
+            V = trace
+            height = max(trace)
+            spad = height/10
+
         spky = spk.SpikeTrain(spikes,[0,len(trace)])
         corr = np.corrcoef(psth_spiky(spky,binres=1,smooth=psth_smooth,dsample=t_dsample),p)[0][1]
         smpl_corr.append(corr)
         
         if plt:
-            from matplotlib.pyplot import *
+            import matplotlib.pyplot as pyplt
             import seaborn as sns
             clr = sns.color_palette('cubehelix',5)
             
-            figure(figsize=figsize)
-            title("$R: {:.2f}$".format(corr))
-            plot(thresh,alpha=0.25,color=clr[1])
-            plot(V,linewidth=1,color=clr[1])
+            pyplt.figure(figsize=figsize)
+            pyplt.title("$R: {:.2f}$".format(corr))
+            if thresh is not None: pyplt.plot(thresh,alpha=0.25,color=clr[1])
+            pyplt.plot(V,linewidth=1,color=clr[1])
             for i,trial in enumerate(k):
-                vlines(trial.spikes,spad+height+sscale*height*i,spad+height+sscale*height*(i+1),alpha=1,color=clr[0])
+                pyplt.vlines(trial.spikes,spad+height+sscale*height*i,spad+height+sscale*height*(i+1),alpha=1,color=clr[0])
             i += 1
-            vlines(spikes,spad+height+sscale*height*(i+sscale),spad+height+sscale*height*(i+1+sscale),alpha=1,color=clr[1])
-            xlim(0,len(V))
-    if plt: tight_layout()
+            pyplt.vlines(spikes,spad+height+sscale*height*(i+sscale),spad+height+sscale*height*(i+1+sscale),alpha=1,color=clr[1])
+            pyplt.xlim(0,len(V))
+    if plt: pyplt.tight_layout()
     return smpl_corr
+
+def glm_sample_validate(model,sample,stims,psth_data,ntrials=10,smooth=1,dsample=0):
+    corrs = []
+    for s,p in zip(stims,psth_data):
+        trials = [model.run(s)[1] for i in range(ntrials)]
+        corrs.append(np.corrcoef(psth(trials,len(p),smooth,dsample),p)[0][1])
+    return corrs
+
+def glm_post_predict_corr(model,stims,data,flatchain,t_dsample,psth_smooth,nsamples=100,ntrials=10,bootstrap=False):
+    idx = []
+    smpl_idx = None
+    corrs = []
+    for i in range(nsamples):
+            while True:
+                smpl_idx = np.random.randint(len(flatchain))
+                if smpl_idx not in idx: break
+            if not bootstrap: idx.append(smpl_idx)
+            smpl = flatchain[smpl_idx]
+            corrs.append(glm_sample_validate(model,smpl,stims,data,smooth=psth_smooth,ntrials=ntrials,dsample=t_dsample))
+    return np.mean(corrs,axis=0)
+
+def specs_to_designs(specs,tlen,pad="edge"):
+    dummy = [[]]*len(specs)
+    return [design_matrix([np.pad(s,((0,0),(tlen-1,0)),pad)],[p],tlen)[0] for s,p in zip(specs,dummy)]
+
+def spksbin_to_designs(spks,tlen,plen,pad="edge"):
+    dummy = [[]]*len(specs)
+    return [[ps_design([np.pad(s,(tlen-1,0),pad)],[psth[0]],plen,tlen)[0] for s in ss ] for ss in dummy]
+
+def load_rothman(model,nspec,t_dsample,compress=1,gammatone=True,root="/scratch/mcb2x/modeldata/sigma5/"):
+    stimfiles = []
+    spikefiles = []
+    for f in next(walk(root+model))[2]:
+        split = f.split(".")
+        if len(split)==2:
+            if split[1] =="wav":
+                stimfiles.append(f)
+        else:
+            if f[:5] == "spike":
+                spikefiles.append(f)
+    spikefiles = np.sort(spikefiles)
+    stimfiles = np.sort(stimfiles)
+
+    stims,durations = load_sound_data(stimfiles,root+model,dsample=t_dsample,sres=nspec,gammatone=gammatone,compress=compress)
+    spikes_data, spiky_data = load_spikes_data(spikefiles,root+model, durations,ts_file=False)
+    
+    return stims,durations,spikes_data,spiky_data

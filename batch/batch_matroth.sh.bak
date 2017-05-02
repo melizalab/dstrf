@@ -1,0 +1,11 @@
+#!/bin/sh
+
+CELLS=$1
+DIR=$2
+
+while read CELL
+do 
+	echo $CELL
+	echo /scratch/dstrf/batch/matroth.sh $CELL $DIR | batch
+done < $CELLS 
+

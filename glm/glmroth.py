@@ -18,8 +18,9 @@ from models import cosstrf, GLM_cos
 from neurofit import utils as nfutils
 
 cell = sys.argv[1]
-saveplace = sys.argv[2]
-tag = sys.argv[3]
+burn = int(sys.argv[2])
+saveplace = sys.argv[3]
+tag = sys.argv[4]
 
 print(cell,"\n")
 
@@ -29,7 +30,6 @@ print(cell,"\n")
 
 # assimilation parameters
 nwalkers = 1000
-burn = 1000
 threads = 8
 keep = 1
 num_assim_stims = 15

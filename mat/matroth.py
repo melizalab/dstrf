@@ -19,15 +19,17 @@ from models import cosstrf, mat, dstrf_mat
 from neurofit import utils as nfutils
 
 cell = sys.argv[1]
-saveplace = sys.argv[2]
-tag = sys.argv[3]
+burn = int(sys.argv[2])
+saveplace = sys.argv[3]
+tag = sys.argv[4]
+
+print(cell,"\n")
 
 # ## Setting paramters and loading data
 
 
 # assimilation parameters
 nwalkers = 1000
-burn = 1000
 threads = 8
 keep = 1
 num_assim_stims = 15
@@ -36,7 +38,7 @@ tracker = nfutils.convergence_tracker(burn,burn/10)
 # dstrf model settings
 free_ts = False
 scale = 10
-channels = 2
+channels = 1
 ncos = 10
 coslin = 1
 norm = True

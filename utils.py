@@ -454,3 +454,39 @@ def load_rothman(model,nspec,t_dsample,compress=1,gammatone=True,root="/scratch/
     spikes_data, spiky_data = load_spikes_data(spikefiles,root+model, durations,ts_file=False)
     
     return stims,durations,spikes_data,spiky_data
+
+class hyper_opt:
+    def __init__(self,stims,psth,filt,nspec,tlen,norm=True,center=True):
+        from models import cosstrf
+        self.filt=filt
+        self.tlen=tlen
+        self.nspec=nspec
+        self.stims=stims
+        self.psth=psth
+        self.norm=norm
+        self.center=center
+        self.model=cosstrf
+    
+    def run(self,theta):
+        c,n,l = np.rint(theta).astype(int)
+    
+        try: 
+            tbas, fromt, tot = cosbasis(self.tlen,n,l,retfn=True,norm=True)
+            SPEC,TIM = factorize(self.filt,c)
+            filt_start = np.hstack((SPEC.flatten(),tot(TIM).flatten()))
+            strf_model = self.model(c,self.nspec,self.tlen,n,l,normalize=self.norm,center=self.center)
+            strf_model.set(filt_start)
+
+            out = 0
+            for s,p in zip(self.stims,self.psth):
+                out -= np.sum(np.power(strf_model.run(s) - p,2))
+            
+            k = c*(n+self.nspec)
+            
+            return 2*k-2*out
+        except (ValueError,np.linalg.LinAlgError) as e:
+            return np.inf
+        
+    def search(self,bounds=[slice(1,10,1),slice(2,30,1),slice(1,1e3,1e2)]):
+        from scipy.optimize import brute
+        return np.rint(brute(self.run,bounds)).astype(int)   

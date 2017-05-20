@@ -3,6 +3,7 @@ import utils
 import cneurons as cn
 import neurofit.utils as nfutils
 from scipy.signal import resample
+import quickspikes as qs
 
 
 # strf model with time in cosine basis (a la Pillow)
@@ -189,20 +190,22 @@ class GLM_cos():
 
         return (rate, spike_times) if self.spike else rate
 
-# augmented mat model with R and tm fixed to 1
+# augmented mat model
 class mat():
-    def __init__(self, free_ts=False):
+    def __init__(self, free_ts=False,stochastic=False):
         self.nrn = None
         self.free_ts = free_ts
+        self.stochastic = stochastic
 
     def dim(self):
         return 6 if self.free_ts else 4
 
     def set(self, theta):
         a, b, c, w = theta[:4]
-        self.nrn = cn.augmat(a, b, c, w)
-        self.nrn.R = 1
-        self.nrn.tm = 1
+        if self.stochastic:
+            self.nrn = cn.augmatsto(a,b,c,w)
+        else:
+            self.nrn = cn.augmat(a, b, c, w)
 
         if self.free_ts:
             t1, t2 = theta[4:]
@@ -216,8 +219,8 @@ class mat():
 # combining the strf and mat models
 class dstrf_mat():
     def __init__(self,channels=1,nspec=15,tlen=30,ncos=10,coslin=1,upsample=1,
-                 scale=1,free_ts=False,normalize=False,center=False,noise=None):
-        self.mat = mat(free_ts=free_ts)
+                 scale=1,free_ts=False,normalize=False,center=False,noise=None,stochastic=False):
+        self.mat = mat(free_ts=free_ts,stochastic=stochastic)
         self.pstrf = cosstrf(channels,nspec,tlen,ncos,coslin,normalize,center)
         self.upsample = upsample
         self.scale = scale
@@ -243,3 +246,74 @@ class dstrf_mat():
         if self.noise is not None: r += np.random.randn(len(r))*self.noise
         r = resample(r,len(r)*self.upsample)*self.scale
         return self.mat.run(r)
+
+class adex():
+    def __init__(self,h=30):
+        self.nrn = None
+        self.det = qs.detector(h-5,2)
+        self.h = h
+
+    def dim(self):
+        return 9
+
+    def set(self, theta):
+        C,gl,el,delt,vt,tw,a,vr,b = theta
+        self.nrn = cn.adex(C,gl,el,delt,vt,tw,a,vr,b)
+        self.nrn.h = self.h
+
+    def run(self, iapp):
+        det = qs.detector(self.h-5,2)
+        self.nrn.apply_current(iapp, 1)
+        trace = self.nrn.simulate(len(iapp),1)
+        spikes = det.send(trace[:,0])
+        return (trace,spikes)
+
+
+class adex_zero_centered():
+    def __init__(self,h=30):
+        self.nrn = None
+        self.h = h
+
+    def dim(self):
+        return 7
+
+    def set(self, theta):
+        gl,delt,vt,tw,a,vr,b = theta
+        self.nrn = cn.adex(1,gl,0,delt,vt,tw,a,vr,b)
+        self.nrn.h = self.h
+
+    def run(self, iapp):
+        det = qs.detector(self.h-5,2)
+        self.nrn.apply_current(iapp, 1)
+        trace = self.nrn.simulate(len(iapp),1)
+        spikes = det.send(trace[:,0])
+        return (trace,spikes)
+
+class dstrf_adex():
+    def __init__(self,channels=1,nspec=15,tlen=30,ncos=10,coslin=1,upsample=1,
+                 scale=1,normalize=False,center=False,noise=None,h=50):
+        self.adex = adex(h)
+        self.pstrf = cosstrf(channels,nspec,tlen,ncos,coslin,normalize,center)
+        self.upsample = upsample
+        self.scale = scale
+        self.channels = channels
+        self.nspec = nspec
+        self.tlen = tlen
+        self.ncos = ncos
+        self.noise = noise
+                
+    def dim(self):
+        return self.channels*(self.nspec+self.ncos) + 7
+     
+    def set(self, theta):
+        ptheta, atheta =  np.split(theta,[-7])
+        atheta = np.insert(atheta,[0,1],[1,0])
+        self.pstrf.set(ptheta)
+        self.adex.set(atheta)
+        
+    def run(self, stim):
+        r = self.pstrf.run(stim)
+        if self.noise is not None: r += np.random.randn(len(r))*self.noise
+        r = resample(r,len(r)*self.upsample)*self.scale
+
+        return self.adex.run(r)

@@ -345,31 +345,53 @@ def load_crcns(cell,stim_type,nspec,t_dsample,compress=1,gammatone=True,root="/h
     return out
 
 def posterior_predict_corr(model,stims,data,flatchain,t_dsample=1,psth_smooth=1,nsamples=100,bootstrap=False,ntrials=1):
-
-    idx = [None]
-    smpl_idx = None
-    MANY = []
-
-    for i in range(nsamples):
-        while smpl_idx in idx:
-            smpl_idx = np.random.randint(len(flatchain))
-        if not bootstrap: idx.append(smpl_idx)
-        smpl = flatchain[smpl_idx]
-        model.set(smpl)
-
-        resp_spiky = []
-        for s in stims:
+    corrs = []
+    
+    for s,d in zip(stims,data):
+        spks = []
+        idx = [None]
+        smpl_idx = None
+        for i in range(ntrials):
+            while smpl_idx in idx:
+                smpl_idx = np.random.randint(len(flatchain))
+            if not bootstrap: idx.append(smpl_idx)
+            smpl = flatchain[smpl_idx]
+            model.set(smpl)
             trace, spikes = model.run(s)
             spky = spk.SpikeTrain(spikes,[0,len(trace)])
-            resp_spiky.append(spky)
-        MANY.append(resp_spiky)
+            spks.append(spky)
+            
+        psth = psth_spiky(spks,1,t_dsample,psth_smooth)
+        corrs.append(np.corrcoef(psth,d)[0][1])            
+    
+    return corrs
 
-    corr = []
-    for i in range(len(stims)):
-        p = psth_spiky(np.asarray(MANY)[:,i],1,t_dsample,psth_smooth)
-        thiscorr = np.corrcoef(p,data[i])[0][1]
-        corr.append(thiscorr)
-    return corr
+# def posterior_predict_corr(model,stims,data,flatchain,t_dsample=1,psth_smooth=1,nsamples=100,bootstrap=False,ntrials=1):
+
+#     idx = [None]
+#     smpl_idx = None
+#     MANY = []
+
+#     for i in range(nsamples):
+#         while smpl_idx in idx:
+#             smpl_idx = np.random.randint(len(flatchain))
+#         if not bootstrap: idx.append(smpl_idx)
+#         smpl = flatchain[smpl_idx]
+#         model.set(smpl)
+
+#         resp_spiky = []
+#         for s in stims:
+#             trace, spikes = model.run(s)
+#             spky = spk.SpikeTrain(spikes,[0,len(trace)])
+#             resp_spiky.append(spky)
+#         MANY.append(resp_spiky)
+
+#     corr = []
+#     for i in range(len(stims)):
+#         p = psth_spiky(np.asarray(MANY)[:,i],1,t_dsample,psth_smooth)
+#         thiscorr = np.corrcoef(p,data[i])[0][1]
+#         corr.append(thiscorr)
+#     return corr
 
 def dstrf_sample_validate(model,sample,stims,psth,t_dsample=1,psth_smooth=1,sscale=0.1,ntrials=1):
     model.set(sample)

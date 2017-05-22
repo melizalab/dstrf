@@ -115,8 +115,8 @@ mat_prior = priors.joint_independent(
 cost = spike_distance
 unbounded = priors.unbounded()
 
-def dstrf_shrink_prior(theta):
-    return np.sum(np.abs(start[:-4])) + mat_prior(start[-4:])
+def dstrf_prior(theta):
+    return mat_prior(theta[-4:])
 
 
 # ## Run initial MAT parameter fit
@@ -181,7 +181,7 @@ p0 = np.vstack((start,p0))
 
 # run emcee
 print("\n")
-dstrf_smplr = nf.sampler(model,dstrf_shrink_prior,spike_distance,nwalkers,zip(assim_stims,assim_spiky),threads)
+dstrf_smplr = nf.sampler(model,dstrf_prior,spike_distance,nwalkers,zip(assim_stims,assim_spiky),threads)
 for pos,_,_ in tracker(dstrf_smplr.sample(p0,iterations=burn)): continue
 dstrf_smplr.reset()
 dstrf_smplr.run_mcmc(pos,1);

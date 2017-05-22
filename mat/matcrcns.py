@@ -118,7 +118,7 @@ cost = spike_distance
 unbounded = priors.unbounded()
 
 def dstrf_shrink_prior(theta):
-    return np.sum(np.abs(start[:-4])) + mat_prior(start[-4:])
+    return -np.sum(np.abs(theta[:-4])) #+ mat_prior(theta[-4:])
 
 
 # ## Run initial MAT parameter fit

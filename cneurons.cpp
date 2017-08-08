@@ -13,7 +13,7 @@ namespace py = boost::python;
 
 typedef std::vector<double> vtype;
 
-class neuron 
+class neuron
 {
     protected:
         int ndim;
@@ -23,7 +23,7 @@ class neuron
 
     public:
 
-    	void apply_current(PyObject* niapp, double nres) 
+        void apply_current(PyObject* niapp, double nres)
         {
 
             res = nres;
@@ -32,15 +32,15 @@ class neuron
             iapp = reinterpret_cast<double*>(PyArray_DATA(niapp_arrayob));
 
         }
-        py::object integrate(PyObject* niapp, double nres, double tspan, double dt, py::list init_list) 
+        py::object integrate(PyObject* niapp, double nres, double tspan, double dt, py::list init_list)
         {
                 res = nres;
 
                 vtype x = {};
-            	for(int i = 0; i < py::len(init_list); i++) x.push_back(py::extract<double>(init_list[i]));
+                for(int i = 0; i < py::len(init_list); i++) x.push_back(py::extract<double>(init_list[i]));
 
-            	PyArrayObject* niapp_arrayob= reinterpret_cast<PyArrayObject*>(niapp);
-            	iapp = reinterpret_cast<double*>(PyArray_DATA(niapp_arrayob));
+                PyArrayObject* niapp_arrayob= reinterpret_cast<PyArrayObject*>(niapp);
+                iapp = reinterpret_cast<double*>(PyArray_DATA(niapp_arrayob));
 
                 int currpoint = 0;
                 int gridlength = tspan/dt;
@@ -71,7 +71,7 @@ class neuron
                 return arr.copy();
 
         }
-        py::object calc_modelerr(boost::function<void(const vtype&, vtype&, double)> ode, int ndim, py::numeric::array data, double dt) 
+        py::object calc_modelerr(boost::function<void(const vtype&, vtype&, double)> ode, int ndim, py::numeric::array data, double dt)
         {
                 npy_intp size[1];
                 size[0] = len(data)-1;
@@ -109,75 +109,75 @@ class neuron
 
 class neuron_reset: public neuron
 {
-	protected:
-		virtual bool reset_condition(const vtype &x){};
-		virtual vtype prereset(const vtype &x){};
-		virtual vtype reset(const vtype &x){};
+        protected:
+                virtual bool reset_condition(const vtype &x){};
+                virtual vtype prereset(const vtype &x){};
+                virtual vtype reset(const vtype &x){};
 
-	public:
-		void write(const vtype &x, const double t, const double dt, double *data)
-		{
-			int i = round(t/dt);
-			for (int j = 0; j < ndim; j++)
-			{
-				data[i*ndim+j] = x[j];
-			}
-		}
-			
-		py::object integrate(double tspan, double dt, vtype x) 
-		{
-			int currpoint = 0;
-			int gridlength = tspan/dt;
+        public:
+                void write(const vtype &x, const double t, const double dt, double *data)
+                {
+                        int i = round(t/dt);
+                        for (int j = 0; j < ndim; j++)
+                        {
+                                data[i*ndim+j] = x[j];
+                        }
+                }
 
-			npy_intp size[1];
-			size[0] = gridlength;
-			size[1] = ndim;
+                py::object integrate(double tspan, double dt, vtype x)
+                {
+                        int currpoint = 0;
+                        int gridlength = tspan/dt;
 
-			double data[gridlength*ndim];
+                        npy_intp size[1];
+                        size[0] = gridlength;
+                        size[1] = ndim;
 
-			auto stepper =  euler<vtype>();				
-			double t = 0.0;
+                        double data[gridlength*ndim];
 
-
-			int i = 1;
-			double target = 0.0;
-			
-			py::list spikes;
-			while(t < tspan)
-			{
-
-				stepper.do_step(ode,x,t,dt);
-
-					
-				if(reset_condition(x))
-				{
-					spikes.append(t);
-					write(prereset(x), t, dt, data);
-					x = reset(x);					
-					t += dt;
-				}
-			
-				write(x,t, dt, data);
-				t += dt;
-			}
+                        auto stepper =  euler<vtype>();
+                        double t = 0.0;
 
 
-			double (*data2)[gridlength][ndim] = reinterpret_cast<double (*)[gridlength][ndim]>(data);
+                        int i = 1;
+                        double target = 0.0;
 
-			PyObject* pyObj = PyArray_SimpleNewFromData( 2, size, NPY_DOUBLE, data2 );
-			py::handle<> handle( pyObj );
-			py::numeric::array arr( handle );
-			return arr.copy();
+                        py::list spikes;
+                        while(t < tspan)
+                        {
 
-		}
+                                stepper.do_step(ode,x,t,dt);
+
+
+                                if(reset_condition(x))
+                                {
+                                        spikes.append(t);
+                                        write(prereset(x), t, dt, data);
+                                        x = reset(x);
+                                        t += dt;
+                                }
+
+                                write(x,t, dt, data);
+                                t += dt;
+                        }
+
+
+                        double (*data2)[gridlength][ndim] = reinterpret_cast<double (*)[gridlength][ndim]>(data);
+
+                        PyObject* pyObj = PyArray_SimpleNewFromData( 2, size, NPY_DOUBLE, data2 );
+                        py::handle<> handle( pyObj );
+                        py::numeric::array arr( handle );
+                        return arr.copy();
+
+                }
 };
 
 class iz: public neuron_reset
 {
     public:
-		double a,b,c,d,h;
-		void set_equations()
-   		{
+                double a,b,c,d,h;
+                void set_equations()
+                {
             ndim = 2;
             ode = [this]( const vtype &x , vtype &dxdt , double t )
             {
@@ -188,46 +188,46 @@ class iz: public neuron_reset
                 dxdt[0] = 0.04*x[0]*x[0] + 5*x[0] + 140 - x[1] + I;
                 dxdt[1] = a*(b*x[0] - x[1]);
             };
-    	}
-		iz() 
-		{
-			a = 0.02;
-			b = 0.2;
-			c = -65.0;
-			d = 8.0;
-			h = 30.0;
-			set_equations();
-		};
-		iz(double na, double nb, double nc, double nd, double nh)
-		{
-			a = na;
-			b = nb;
-			c = nc;
-			d = nd;
-			h = nh;
-			set_equations();
-		};
-		
-		bool reset_condition(const vtype &x)
-		{
-			return x[0] >= h;
-		}
-		
-		vtype prereset(const vtype &x)
-		{
-			return {h,x[1]};
-		}
-		
-		vtype reset(const vtype &x) 
-		{
-			return {c,x[1]+d};
-		}
+        }
+                iz()
+                {
+                        a = 0.02;
+                        b = 0.2;
+                        c = -65.0;
+                        d = 8.0;
+                        h = 30.0;
+                        set_equations();
+                };
+                iz(double na, double nb, double nc, double nd, double nh)
+                {
+                        a = na;
+                        b = nb;
+                        c = nc;
+                        d = nd;
+                        h = nh;
+                        set_equations();
+                };
 
-		py::object simulate(const double tspan, const double dt)
-		{	
-			vtype start = {c, -14.0};
+                bool reset_condition(const vtype &x)
+                {
+                        return x[0] >= h;
+                }
+
+                vtype prereset(const vtype &x)
+                {
+                        return {h,x[1]};
+                }
+
+                vtype reset(const vtype &x)
+                {
+                        return {c,x[1]+d};
+                }
+
+                py::object simulate(const double tspan, const double dt)
+                {
+                        vtype start = {c, -14.0};
             return integrate(tspan, dt, start);
-		}
+                }
 };
 
 class adex: public neuron_reset
@@ -235,7 +235,7 @@ class adex: public neuron_reset
     public:
         double C,gl,el,delt,vt,tw,a,vr,b,h,R;
         void set_equations()
-   		{
+                {
             ndim = 2;
             ode = [this]( const vtype &x , vtype &dxdt , double t )
             {
@@ -246,10 +246,10 @@ class adex: public neuron_reset
                 dxdt[0] = 1/C*(-gl*(x[0]-el) + gl*delt*exp((x[0]-vt)/delt) - x[1] + R*I);
                 dxdt[1] = 1/tw*(a*(x[0]-el) - x[1]);
             };
-    	}
-        adex() 
+        }
+        adex()
         {
-            C    = 250.0; 
+            C    = 250.0;
             gl   = 30.0;
             el   = -70.6;
             delt = 2.0;
@@ -264,7 +264,7 @@ class adex: public neuron_reset
         };
         adex(double nC,double ngl,double nel,double ndelt,double nvt,double ntw,double na,double nvr,double nb)
         {
-            C    = nC; 
+            C    = nC;
             gl   = ngl;
             el   = nel;
             delt = ndelt;
@@ -277,21 +277,21 @@ class adex: public neuron_reset
             R    = 1.0;
             set_equations();
         };
-		
-		bool reset_condition(const vtype &x)
-		{
-			return x[0] >= h;
-		}
-		
-		vtype prereset(const vtype &x)
-		{	
-			return {h,x[1]};
-		}
-		
-		vtype reset(const vtype& x)
-		{ 	
-			return {vr,x[1]+b};
-		}
+
+                bool reset_condition(const vtype &x)
+                {
+                        return x[0] >= h;
+                }
+
+                vtype prereset(const vtype &x)
+                {
+                        return {h,x[1]};
+                }
+
+                vtype reset(const vtype& x)
+                {
+                        return {vr,x[1]+b};
+                }
 
         py::object simulate(double tspan, double dt)
         {
@@ -304,7 +304,7 @@ class mat: public neuron
 {
     public:
             double tm,R,a,b,w,t1,t2,h,tref;
-            mat() 
+            mat()
             {
                 tm=10;
                 R=50;
@@ -342,7 +342,7 @@ class mat: public neuron
                             double dv = 0;
                             double dh1 = 0;
                             double dh2 = 0;
-                            
+
                             npy_intp size[2];
                             size[0] = grid;
                             size[1] = 2;
@@ -378,7 +378,7 @@ class mat: public neuron
                                 }
 
                                 data[i][0] = v;
-                                data[i][1] = h;   
+                                data[i][1] = h;
                             }
 
                             PyObject * pyObj = PyArray_SimpleNewFromData( 2, size, NPY_DOUBLE, data );
@@ -392,7 +392,7 @@ class augmat: public neuron
 {
     public:
             double tm,R,a,b,w,t1,t2,h,tref,tv,c;
-            augmat() 
+            augmat()
             {
                 tm=10;
                 R=50;
@@ -439,12 +439,12 @@ class augmat: public neuron
                             double dhv = 0;
 
                             double ddhv = 0;
-                            
+
                             npy_intp size[2];
                             size[0] = grid;
-                            size[1] = 2;
+                            size[1] = 4;
 
-                            double data[grid][2];
+                            double data[grid][4];
 
                             py::list spikes;
 
@@ -478,7 +478,9 @@ class augmat: public neuron
                                 }
 
                                 data[i][0] = v;
-                                data[i][1] = h;   
+                                data[i][1] = h1;
+                                data[i][2] = h2;
+                                data[i][3] = hv;
                             }
 
                             PyObject * pyObj = PyArray_SimpleNewFromData( 2, size, NPY_DOUBLE, data );
@@ -493,7 +495,7 @@ class augmatsto: public neuron
     public:
             double tm,R,a,b,w,t1,t2,h,tref,tv,c;
 
-            augmatsto() 
+            augmatsto()
             {
                 tm=10;
                 R=50;
@@ -547,7 +549,7 @@ class augmatsto: public neuron
 
                 double ps = 0;
 
-                
+
                 npy_intp size[2];
                 size[0] = grid;
                 size[1] = 3;
@@ -588,8 +590,8 @@ class augmatsto: public neuron
                     }
 
                     data[i][0] = v;
-                    data[i][1] = h;  
-                    data[i][2] = ps; 
+                    data[i][1] = h;
+                    data[i][2] = ps;
                 }
 
                 PyObject * pyObj = PyArray_SimpleNewFromData( 2, size, NPY_DOUBLE, data );
@@ -625,7 +627,7 @@ class hr: public neuron
             };
         }
 
-        hr() 
+        hr()
         {
             a = 1.0;
             b = 3.0;
@@ -680,7 +682,7 @@ class hr4: public neuron
             ndim = 4;
         }
 
-        hr4() 
+        hr4()
         {
             a = 1.0;
             b = 3.0;
@@ -739,7 +741,7 @@ class hr2: public neuron
             };
         }
 
-        hr2() 
+        hr2()
         {
             a = 1.0;
             b = 3.0;
@@ -793,7 +795,7 @@ class hh: public neuron
             };
         }
 
-        hh() 
+        hh()
         {
                 C=1.0;
                 gna=120.0;
@@ -821,7 +823,7 @@ class hh: public neuron
                 vnt=-55.0;
                 dvnt=30.0;
                 set_equations();
-                
+
             }
 
             hh(py::list param)
@@ -851,7 +853,7 @@ class hh: public neuron
                 vnt=py::extract<double>(param[22]);
                 dvnt=py::extract<double>(param[23]);
                 C=py::extract<double>(param[24]);
-                
+
                 set_equations();
             }
 };
@@ -863,8 +865,8 @@ BOOST_PYTHON_MODULE(cneurons)
         py::numeric::array::set_module_and_type("numpy", "ndarray");
 
         class_<neuron, boost::noncopyable>("_neuron")
-        	.def("apply_current",&neuron::apply_current)
-        	.def("integrate",&neuron::integrate);
+                .def("apply_current",&neuron::apply_current)
+                .def("integrate",&neuron::integrate);
 
         class_<iz,bases<neuron>>("iz")
                 .def(init<double, double, double, double, double>())
@@ -875,7 +877,7 @@ BOOST_PYTHON_MODULE(cneurons)
                 .def_readwrite("d", &iz::d)
                 .def_readwrite("h", &iz::h);
 
-        
+
         class_<adex,bases<neuron>>("adex")
                 .def(init<double, double, double, double, double, double, double, double, double>())
                 .def("simulate", &adex::simulate)

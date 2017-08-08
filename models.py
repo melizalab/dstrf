@@ -8,7 +8,7 @@ import quickspikes as qs
 
 # strf model with time in cosine basis (a la Pillow)
 class cosstrf():
-    def __init__(self, channels, nspec, tlen, ncos=10,tcoslin=1,normalize=False,center=False):
+    def __init__(self, channels, nspec, tlen, ncos=10, tcoslin=1, normalize=False, center=False):
         self.channels = channels
         self.nspec = nspec
         self.tlen = tlen
@@ -20,7 +20,7 @@ class cosstrf():
         self.filt = None
         self.normalize = normalize
         self.center = center
-        
+
     def dim(self):
         return self.channels*(self.nspec+self.ncos)
 
@@ -33,7 +33,8 @@ class cosstrf():
 
     def run(self,stim):
         r = utils.spgconv(self.filt,stim)
-        if self.normalize: r = nfutils.normalize(r,center=self.center)
+        if self.normalize:
+            r = nfutils.normalize(r,center=self.center)
         return r
 
 # strf model with time in cosine basis (a la Pillow)
@@ -51,7 +52,7 @@ class cosstrf_design():
         self.filt = None
         self.norm = normalize
         self.center = center
-        
+
     def set(self,theta):
         flat_sfilt = theta[:self.nspec*self.channels]
         flat_tfilt = theta[self.nspec*self.channels:]
@@ -64,7 +65,7 @@ class cosstrf_design():
         R = np.matmul(stim,self.flat)
         if self.norm: nfutils.normalize(R,center=self.center)
         return R
-    
+
 
 class LNP_cos():
     def __init__(self,channels,nspec,tlen,ncos=10,coslin=1,nonlin=np.exp,bias=True,spike=False):
@@ -79,17 +80,17 @@ class LNP_cos():
         if self.bias:
             self.offset,theta = theta[0],theta[1:]
         self.pstrf.set(theta)
-        
+
     def run(self,data):
         stim, observed_spikes = data if np.shape(data) == (2,) else (data,None)
-            
+
         synap = self.pstrf.run(stim)
-    
+
         rate = synap + self.offset
         if self.nonlin is not None: rate = self.nonlin(rate)
-    
+
         return rate
-    
+
 class LNP_coslin():
     def __init__(self,channels,nspec,tlen,ncos=10,coslin=1,nonlin=np.exp,bias=True):
         self.nonlin = nonlin
@@ -106,17 +107,17 @@ class LNP_coslin():
             coslin,self.offset,theta = theta[0],theta[1],theta[2:]
         self.pstrf = cosstrf(self.channels,self.nspec,self.tlen,self.ncos,np.power(2,coslin))
         self.pstrf.set(theta)
-        
+
     def run(self,data):
         stim, observed_spikes = data if np.shape(data) == (2,) else (data,None)
-            
+
         synap = self.pstrf.run(stim)
-    
+
         rate = synap + self.offset
         if self.nonlin is not None: rate = self.nonlin(rate)
-    
+
         return rate
-    
+
 # glm model with a cosine basis
 class GLM_cos():
     def __init__(self,channels,nspec,tlen,hlen,tcos=10,hcos=8,tcoslin=1,htcoslin=10,nonlin=np.exp,spike=False,dt=0.001):
@@ -132,7 +133,7 @@ class GLM_cos():
         self.tcos = tcos
         self.hcos = hcos
         self.channels = channels
-        
+
     def dim(self):
         return self.channels*(self.nspec + self.tcos + self.hcos) + 1
 
@@ -140,25 +141,25 @@ class GLM_cos():
         self.offset,ktheta,htheta = np.split(theta,[1,-self.h.ncos])
         self.k.set(ktheta)
         self.h.set(np.hstack((1,htheta)))
-        
+
     def run(self,data):
         stim, observed_spikes = data if np.shape(data) == (2,) else (data,None)
-            
+
         synap = self.k.run(stim)
-        
+
         duration = synap.size
-        
-        spikes = np.zeros(duration+1) 
-        spike_times = []    
-        
-        
+
+        spikes = np.zeros(duration+1)
+        spike_times = []
+
+
         if observed_spikes is not None:
             rate = []
             oneobv = False
             if np.shape(observed_spikes[0]) == ():
                 observed_spikes = [observed_spikes]
                 oneobv = True
-            for ob in observed_spikes:    
+            for ob in observed_spikes:
                 if len(ob) >= duration:
                     spikes = ob[:duration]
                     spike_times = np.where(spikes>0)
@@ -186,12 +187,13 @@ class GLM_cos():
                 rate[i] = self.nonlin(r)*self.dt
                 if np.random.poisson(rate[i]) > 0:
                     spikes[i] = 1
-                    spike_times.append(i)   
+                    spike_times.append(i)
 
         return (rate, spike_times) if self.spike else rate
 
-# augmented mat model
+
 class mat():
+    """Augmented MAT model"""
     def __init__(self, free_ts=False,stochastic=False):
         self.nrn = None
         self.free_ts = free_ts
@@ -216,10 +218,11 @@ class mat():
         self.nrn.apply_current(iapp, 1)
         return self.nrn.simulate(len(iapp), 1)
 
+
 # combining the strf and mat models
 class dstrf_mat():
-    def __init__(self,channels=1,nspec=15,tlen=30,ncos=10,coslin=1,upsample=1,
-                 scale=1,free_ts=False,normalize=False,center=False,noise=None,stochastic=False):
+    def __init__(self, channels=1, nspec=15, tlen=30, ncos=10, coslin=1, upsample=1,
+                 scale=1, free_ts=False, normalize=False, center=False, noise=None, stochastic=False):
         self.mat = mat(free_ts=free_ts,stochastic=stochastic)
         self.pstrf = cosstrf(channels,nspec,tlen,ncos,coslin,normalize,center)
         self.upsample = upsample
@@ -230,22 +233,24 @@ class dstrf_mat():
         self.tlen = tlen
         self.ncos = ncos
         self.noise = noise
-                
+
     def dim(self):
         return self.channels*(self.nspec+self.ncos) + ( 6 if self.free_ts else 4 )
-     
+
     def set(self, theta):
         cut = -6 if self.free_ts else -4
         self.pstrf.set(theta[:cut])
         self.mat.set(theta[cut:])
         self.mat.nrn.R = 1
         self.mat.nrn.tm = 1
-        
+
     def run(self, stim):
         r = self.pstrf.run(stim)
-        if self.noise is not None: r += np.random.randn(len(r))*self.noise
+        if self.noise is not None:
+            r += np.random.randn(len(r))*self.noise
         r = resample(r,len(r)*self.upsample)*self.scale
         return self.mat.run(r)
+
 
 class adex():
     def __init__(self,h=30):
@@ -301,16 +306,16 @@ class dstrf_adex():
         self.tlen = tlen
         self.ncos = ncos
         self.noise = noise
-                
+
     def dim(self):
         return self.channels*(self.nspec+self.ncos) + 7
-     
+
     def set(self, theta):
         ptheta, atheta =  np.split(theta,[-7])
         atheta = np.insert(atheta,[0,1],[1,0])
         self.pstrf.set(ptheta)
         self.adex.set(atheta)
-        
+
     def run(self, stim):
         r = self.pstrf.run(stim)
         if self.noise is not None: r += np.random.randn(len(r))*self.noise

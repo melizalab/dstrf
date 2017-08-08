@@ -213,13 +213,15 @@ def load_sound_data(files,root="",windowtime=256,ovlerlap=10,f_min=500,f_max=800
 def load_spikes_data(files,root="",durations=[],ts_file=True,delim=" "):
     spikes_data = []
     spiky_data = []
-    for d,f in enumerate(files):
+    for d, f in enumerate(files):
         # load spike data
         dur = durations[d]
-        if ts_file: stim_spikes = [filter(lambda x: x >= 0 and x <= dur, s) for s in ts.read(open(root + f))[0]]
-        else: stim_spikes = [filter(lambda x: x >= 0 and x <= dur, map(float,s.split(delim))) for s in open(root + f)]
+        if ts_file: 
+            stim_spikes = ts.subrange(ts.read(open(root + f))[0], 0, dur)
+        else: 
+            stim_spikes = ts.subrange((map(float, s.split(delim)) for s in open(root + f)), 0, dur)
         spikes_data.append(stim_spikes)
-        stim_spiky = [spk.SpikeTrain(s,[0,durations[d]]) for s in stim_spikes]
+        stim_spiky = [spk.SpikeTrain(tuple(s), [0, durations[d]]) for s in stim_spikes]
         spiky_data.append(stim_spiky)
         
     return spikes_data, spiky_data
@@ -293,10 +295,21 @@ def evenoddcorr(spikes,duration,smooth=1,dsample=10):
     trialns = np.arange(len(spikes))
     evens = np.where(trialns % 2 == 0)[0]
     odds = np.where(trialns % 2 != 0)[0]
-        
-    even_psth = psth(spikes[evens],duration,smooth=smooth,dsample=dsample)
-    odd_psth = psth(spikes[odds],duration,smooth=smooth,dsample=dsample)
+    even_trains = [spk.SpikeTrain(s,duration) for s in spikes[evens]]
+    odd_trains = [spk.SpikeTrain(s,duration) for s in spikes[odds]]
+    even_psth = psth_spiky(even_trains,smooth=smooth,dsample=dsample)
+    odd_psth = psth_spiky(odd_trains,smooth=smooth,dsample=dsample)
     return np.corrcoef(even_psth,odd_psth)[0][1]
+
+# def evenoddcorr(spikes,duration,smooth=1,dsample=10):
+#     spikes = np.asarray(spikes)
+#     trialns = np.arange(len(spikes))
+#     evens = np.where(trialns % 2 == 0)[0]
+#     odds = np.where(trialns % 2 != 0)[0]
+        
+#     even_psth = psth(spikes[evens],duration,smooth=smooth,dsample=dsample)
+#     odd_psth = psth(spikes[odds],duration,smooth=smooth,dsample=dsample)
+#     return np.corrcoef(even_psth,odd_psth)[0][1]
 
 def cosbasis(dur,ncos,lin=1,peaks=None,norm=False,retfn=False):
 
@@ -312,13 +325,14 @@ def cosbasis(dur,ncos,lin=1,peaks=None,norm=False,retfn=False):
     nt = len(kt0)
     f = lambda c: (np.cos(np.clip((nlin(kt0+lin)-c)*np.pi/db/2,-np.pi,np.pi))+1)/2
 
-    basis = np.asarray(map(f,ctrs)).T[:dur,:ncos]
+    basis = np.asarray(tuple(map(f, ctrs))).T[:dur, :ncos]
     if norm: basis /= np.linalg.norm(basis,axis=0)
     if retfn:
         tobas = lambda v: np.matmul(v,np.linalg.pinv(basis).T)
         frombas = lambda v: np.matmul(basis,np.asarray(v).T).T
         return basis, frombas, tobas
-    else: return basis
+    else: 
+        return basis
 
 def evenoddcorr(spikes,duration,smooth=1,dsample=10):
     spikes = np.asarray(spikes)
@@ -341,30 +355,9 @@ def load_crcns(cell,stim_type,nspec,t_dsample,compress=1,gammatone=True,root="/h
     spikes_data, spiky_data = load_spikes_data(spikefiles, spikesroot, durations)
     
     out = [stims,durations,spikes_data,spiky_data]
-    if names: out.append(stimfiles)
+    if names: 
+        out.append(stimfiles)
     return out
-
-def posterior_predict_corr(model,stims,data,flatchain,t_dsample=1,psth_smooth=1,nsamples=100,bootstrap=False,ntrials=1):
-    corrs = []
-    
-    for s,d in zip(stims,data):
-        spks = []
-        idx = [None]
-        smpl_idx = None
-        for i in range(ntrials):
-            while smpl_idx in idx:
-                smpl_idx = np.random.randint(len(flatchain))
-            if not bootstrap: idx.append(smpl_idx)
-            smpl = flatchain[smpl_idx]
-            model.set(smpl)
-            trace, spikes = model.run(s)
-            spky = spk.SpikeTrain(spikes,[0,len(trace)])
-            spks.append(spky)
-            
-        psth = psth_spiky(spks,1,t_dsample,psth_smooth)
-        corrs.append(np.corrcoef(psth,d)[0][1])            
-    
-    return corrs
 
 # def posterior_predict_corr(model,stims,data,flatchain,t_dsample=1,psth_smooth=1,nsamples=100,bootstrap=False,ntrials=1):
 
@@ -392,11 +385,11 @@ def posterior_predict_corr(model,stims,data,flatchain,t_dsample=1,psth_smooth=1,
 #         thiscorr = np.corrcoef(p,data[i])[0][1]
 #         corr.append(thiscorr)
 #     return corr
-
 def dstrf_sample_validate(model,sample,stims,psth,t_dsample=1,psth_smooth=1,sscale=0.1,ntrials=1):
     model.set(sample)
 
     smpl_corr = []
+    psths = []
     thresh = None
     
     for s,p in zip(stims,psth):
@@ -409,45 +402,47 @@ def dstrf_sample_validate(model,sample,stims,psth,t_dsample=1,psth_smooth=1,ssca
                 V = trace
             spky.append(spk.SpikeTrain(spikes,[0,len(trace)]))
         
-        corr = np.corrcoef(psth_spiky(spky,binres=1,smooth=psth_smooth,dsample=t_dsample),p)[0][1]
+        psth = psth_spiky(spky,binres=1,smooth=psth_smooth,dsample=t_dsample)
+        corr = np.corrcoef(psth-np.mean(psth),p-np.mean(p))[0][1]
         smpl_corr.append(corr)
+        psths.append(psth)
         
-    return smpl_corr
+    return smpl_corr, psths
 
-def dstrf_ppd2(model,stims,data,flatchain,t_dsample,psth_smooth,nsamples=100,ntrials=10,bootstrap=False):
-    idx = []
-    smpl_idx = None
+def posterior_predict_corr(model,stims,data,flatchain,t_dsample=1,psth_smooth=1,nsamples=100,bootstrap=False,ntrials=1):
     corrs = []
-    for i in range(nsamples):
-            while True:
+    psths = []
+    
+    for s,d in zip(stims,data):
+        spks = []
+        idx = [None]
+        smpl_idx = None
+        for i in range(ntrials):
+            while smpl_idx in idx:
                 smpl_idx = np.random.randint(len(flatchain))
-                if smpl_idx not in idx: break
             if not bootstrap: idx.append(smpl_idx)
             smpl = flatchain[smpl_idx]
-            corrs.append(dstrf_sample_validate(model,smpl,stims,data,t_dsample,psth_smooth,ntrials))
-    return np.mean(corrs,axis=0)
+            model.set(smpl)
+            trace, spikes = model.run(s)
+            spky = spk.SpikeTrain(spikes,[0,len(trace)])
+            spks.append(spky)
+            
+        psth = psth_spiky(spks,1,t_dsample,psth_smooth)
+        corrs.append(np.corrcoef(psth-np.mean(psth),d-np.mean(d))[0][1])     
+        psths.append(psth)
+    
+    return corrs, psths
 
 def glm_sample_validate(model,sample,stims,psth_data,ntrials=10,smooth=1,dsample=0):
     corrs = []
+    psths = []
     model.set(sample)
     for s,p in zip(stims,psth_data):
         trials = [spk.SpikeTrain(model.run(s)[1],[0,len(p)]) for i in range(ntrials)]
-        corrs.append(np.corrcoef(psth_spiky(trials,binres=1,smooth=smooth,dsample=dsample),p)[0][1])
-    return corrs
-
-def glm_post_predict_corr(model,stims,data,flatchain,t_dsample,psth_smooth,nsamples=100,ntrials=10,bootstrap=False):
-    idx = []
-    smpl_idx = None
-    corrs = []
-    for i in range(nsamples):
-            while True:
-                smpl_idx = np.random.randint(len(flatchain))
-                if smpl_idx not in idx: break
-            if not bootstrap: idx.append(smpl_idx)
-            smpl = flatchain[smpl_idx]
-            corrs.append(glm_sample_validate(model,smpl,stims,data,smooth=psth_smooth,ntrials=ntrials,dsample=t_dsample))
-    return np.mean(corrs,axis=0)
-
+        psth = psth_spiky(trials,binres=1,smooth=smooth,dsample=dsample)
+        corrs.append(np.corrcoef(psth-np.mean(psth),p-np.mean(p))[0][1])
+        psths.append(psth)
+    return corrs, psths
 
 def specs_to_designs(specs,tlen,pad="edge"):
     dummy = [[]]*len(specs)

@@ -168,8 +168,8 @@ model.set(dmap)
 
 # In[283]:
 
-map_corr = utils.glm_sample_validate(model,dmap,test_stims,test_psth,ntrials=10,dsample=1,smooth=psth_smooth)
-ppcorr = utils.glm_post_predict_corr(model,test_stims,test_psth,glm_smplr.flatchain,1,psth_smooth)
+map_corr = utils.glm_sample_validate(model,dmap,test_stims,test_psth,ntrials=10,dsample=1,smooth=psth_smooth)[0]
+ppcorr = utils.glm_post_predict_corr(model,test_stims,test_psth,glm_smplr.flatchain,1,psth_smooth)[0]
 corr_means = np.mean([map_corr,ppcorr,eocorr[num_assim_stims:]],axis=1)
 print("\nMAP: {:.2f}, Dist: {:.2f}, EO: {:.2f}".format(corr_means[0],corr_means[1],corr_means[2]))
 print("MAP/EO: {:.2f}, Dist/EO: {:.2f}".format(corr_means[0]/corr_means[2],corr_means[1]/corr_means[2]))

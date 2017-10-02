@@ -5,7 +5,7 @@
 #SBATCH --partition=economy
 #SBATCH -o logs/%j.log
 #SBATCH -e logs/%j.log
-#SBATCH -N 3
+#SBATCH -N 1
 #SBATCH --ntasks-per-node=10
 
 module load python/2.7.6 boost
@@ -23,12 +23,11 @@ SAVEROOT=$4
 echo $CELL $BURN $SAVEROOT
 
 DIR=$SAVEROOT/$CELL/
-mkdir $SAVEROOT
-mkdir $DIR
+mkdir -p $DIR
 
-TAG=$(date '+%F-%H%M')
+TAG=$(date '+%F')-$SLURM_JOB_ID
 cp $PYSCRIPT $DIR/$CELL\_$TAG.py
 
-mpiexec --mca btl sm,tcp,self --mca bt1_tcp_if_include eth1 python2 $DIR/$CELL\_$TAG.py $CELL $BURN $DIR $TAG > $DIR/$CELL\_$TAG.log
+mpiexec --mca btl sm,tcp,self --mca bt1_tcp_if_include eth1 python2 $PYSCRIPT $CELL $BURN $DIR $TAG > $DIR/$CELL\_$TAG.log
 
 echo -n $$ DONE ' ' ; date "+%F %T"

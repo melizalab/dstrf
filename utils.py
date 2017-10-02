@@ -1,6 +1,7 @@
 from __future__ import division
 from __future__ import print_function
 
+import os
 import numpy as np
 import scipy as sp
 import pyspike as spk
@@ -9,7 +10,7 @@ import sklearn.linear_model as lm
 from scipy.signal import decimate, resample, resample_poly
 import scipy.ndimage.filters as sf
 
-from scipy.io.wavfile import read 
+from scipy.io.wavfile import read
 
 import toelis as ts
 
@@ -22,21 +23,21 @@ from os import walk
 def spgconv(h,s,pad="edge"):
     npix, nts = np.shape(s)
     __, tlen = np.shape(h)
-        
+
     plen = tlen-1
     end = nts-plen if not pad else nts
-    
+
     s = s if not pad else np.pad(s,((0,0),(plen,0)),pad)
-    
+
     cs = np.zeros(end)
     for i in range(npix):
         cs += np.convolve(s[i,:],h[i,:],'valid')
-    return cs 
+    return cs
 
 def strf(resolution=50,time=50,maxfreq=8000,latency=0,frequency=0,A=0.25,sigma=0.1,gamma=0.001,alpha=1.4,beta=1.5):
-    import numpy as np    
+    import numpy as np
     time -= 1
-    scale = resolution/50.0   
+    scale = resolution/50.0
     t = np.arange(float(np.negative(time)),1)
     tscale = np.arange(np.negative(time),1,2)
     x = latency
@@ -56,7 +57,7 @@ def design_matrix(stims,rs,twidth):
 
 def ps_design(stims,rs,pwidth,twidth):
     X = np.vstack([sp.linalg.hankel(s[twidth-pwidth-1:-pwidth],s[-pwidth:]) for s in stims])
-    R = np.hstack(r[twidth-1:] for r in rs)    
+    R = np.hstack(r[twidth-1:] for r in rs)
     return X,R
 
 def get_strf(stims,rs,twidth,mode="ElasticNetCV",normalize=True,**kwargs):
@@ -66,11 +67,11 @@ def get_strf(stims,rs,twidth,mode="ElasticNetCV",normalize=True,**kwargs):
 
     regress = getattr(lm,mode)(normalize=normalize,**kwargs)
     regress.fit(X,R)
-    
+
     return np.fliplr(regress.coef_.reshape(nspec,twidth)), regress.intercept_
 
 def get_strf_ps(stims,rs,twidth,pwidth,spikes=None,mode="ElasticNetCV",normalize=True,**kwargs):
-  
+
     spikes = rs if spikes == None else spikes
 
     nspec = stims[0].shape[0]
@@ -86,7 +87,7 @@ def get_strf_ps(stims,rs,twidth,pwidth,spikes=None,mode="ElasticNetCV",normalize
     strf = np.fliplr(strf.reshape(nspec,twidth))
 
     post = post[::-1]
-    
+
     return strf, post, regress.intercept_
 
 def get_strf_old(stims,rs,twidth,smooth=0,thresh=None,offset=True):
@@ -106,7 +107,7 @@ def get_strf_old(stims,rs,twidth,smooth=0,thresh=None,offset=True):
 
     if offset: params, bias = np.split(params,[-1])
 
-    strf = params.reshape(nspec,twidth)[:,::-1] 
+    strf = params.reshape(nspec,twidth)[:,::-1]
 
     if smooth: strf = sf.gaussian_filter(strf,smooth)
     if thresh: strf[np.abs(strf)/np.abs(strf.max())<thresh] = 0
@@ -145,7 +146,7 @@ def psth_spiky(spiky,binres=1,dsample=False,smooth=False):
     if dsample: psth = resample(psth,int(len(psth)/dsample))
     if smooth: psth = sf.gaussian_filter1d(psth,smooth,mode="constant")
     return psth
-    
+
 def SNR(spiky_data,bin_length=1,smooth=10,dsample=0):
 
     PSTH = [psth(spky,bin_length,smooth,dsample) for i, spky in enumerate(spiky_data)]
@@ -156,7 +157,7 @@ def SNR(spiky_data,bin_length=1,smooth=10,dsample=0):
         for j, trial2 in enumerate(PSTH):
             if i == j: R.append(np.cov(trial1,trial2))
             else: A.append(np.cov(trial1,trial2)[0][1])
-                
+
     mR = np.mean(R)
     mA = np.mean(A)
 
@@ -172,8 +173,8 @@ def corrnorm(spiky_data,bin_length=1,smooth=1,dsample=10):
             if i == j: pass
             else: A.append(np.corrcoef(trial1,trial2)[0][1])
     mA = np.mean(A)
-    
-    return np.sqrt(mA)   
+
+    return np.sqrt(mA)
 
 def tbt_corr(predict, spiky_data, binres=1, dsample=10, smooth=1):
     ntrains = len(spiky_data)
@@ -181,15 +182,16 @@ def tbt_corr(predict, spiky_data, binres=1, dsample=10, smooth=1):
     for spiky in spiky_data:
         corr += np.corrcoef(predict,psth(spiky,binres,dsample,smooth))[0][1]
     return corr/ntrains
-    
 
-def load_sound_data(files,root="",windowtime=256,ovlerlap=10,f_min=500,f_max=8000,gammatone=False,
-                    dsample=10,sres=15,compress=0):
+
+def load_sound_data(files, root="", windowtime=256, ovlerlap=10, f_min=500, f_max=8000,
+                    gammatone=False, dsample=10, sres=15, compress=0):
+    """Load sound stimulus and calculate spectrotemporal representation"""
     stims = []
     durations = []
 
     for f in files:
-        Fs, wave = read(root+f)
+        Fs, wave = read(os.path.join(root, f))
         wt = windowtime/Fs
         ovl = ovlerlap/Fs
 
@@ -208,50 +210,53 @@ def load_sound_data(files,root="",windowtime=256,ovlerlap=10,f_min=500,f_max=800
             Pxx = resample(Pxx,sres)
         Pxx = resample(Pxx,int(duration/dsample),axis=1)
         stims.append(Pxx)
-    return stims,durations
+    return stims, durations
 
-def load_spikes_data(files,root="",durations=[],ts_file=True,delim=" "):
+
+def load_spikes_data(files, root="", durations=[], ts_file=True, delim=" "):
+    """Load spike data"""
     spikes_data = []
     spiky_data = []
     for d, f in enumerate(files):
         # load spike data
         dur = durations[d]
-        if ts_file: 
-            stim_spikes = ts.subrange(ts.read(open(root + f))[0], 0, dur)
-        else: 
-            stim_spikes = ts.subrange((map(float, s.split(delim)) for s in open(root + f)), 0, dur)
+        path = os.path.join(root, f)
+        if ts_file:
+            stim_spikes = [filter(lambda x: x >= 0 and x <= dur, s) for s in ts.read(open(path))[0]]
+        else:
+            stim_spikes = [filter(lambda x: x >= 0 and x <= dur, map(float, s.split(delim))) for s in open(path)]
         spikes_data.append(stim_spikes)
         stim_spiky = [spk.SpikeTrain(tuple(s), [0, durations[d]]) for s in stim_spikes]
         spiky_data.append(stim_spiky)
-        
+
     return spikes_data, spiky_data
 
 def prune_walkers(pos,lnprob,tolerance=10,resample=None,return_indx=False,cutoff_exclude=10):
     mean_lnprob = np.mean(lnprob,axis=1)
     sorted_mean = np.sort(mean_lnprob)
     gradient = np.gradient(sorted_mean)[:-cutoff_exclude]
-    
+
     cutoff_indx = np.where(gradient>np.mean(gradient)*tolerance)[0][-1]
     cutoff = sorted_mean[cutoff_indx]
     prune = np.where(mean_lnprob > cutoff)[0]
-   
+
     if resample: prune = np.random.choice(prune,resample)
     if return_indx: return pos[prune], prune
-    else: return pos[prune] 
-    
+    else: return pos[prune]
+
 def P3Z1(t,z1,p1,p2,p3,l,A):
     zeros = (t-z1)
     poles = (t+p1)*(t+p2)*(t+p3)
     out = A*np.exp(-l*t)*poles/zeros
-    return out if np.isfinite(out) else 0 
-    
+    return out if np.isfinite(out) else 0
+
 def PZ(t,zs,ps,l,A):
     zeros = 1
     poles = 1
     for z in zs: zeros *= (t-z)
     for p in ps: poles *= (t+p)
     out = A*np.exp(-l*t)*poles/zeros
-    return out if np.isfinite(out) else 0 
+    return out if np.isfinite(out) else 0
 
 def gauss(x, mu=0, sig=1):
     return np.exp(-np.power((x-mu),2)/(2*np.power(sig,2)))/np.sqrt(2*np.power(sig,2)*np.pi)
@@ -268,15 +273,15 @@ def overtime(l, u, f, *args):
 def factorize(strf,channels=None,min_channels=1):
     sres, tres = np.shape(strf)
     U,s,V = np.linalg.svd(strf)
-    
-    if not channels: channels = max(min_channels,len(np.where(s>1.0)[0])) 
-    
+
+    if not channels: channels = max(min_channels,len(np.where(s>1.0)[0]))
+
     time = np.ndarray((channels,tres))
     spec = np.ndarray((channels,sres))
     for i in range(channels):
         time[i] = V[i,:]*s[i]
         spec[i] = U[:,i]
-    
+
     return spec, time
 
 def trialcorr(spiky_data,bin_length=1,smooth=1,dsample=10):
@@ -306,7 +311,7 @@ def evenoddcorr(spikes,duration,smooth=1,dsample=10):
 #     trialns = np.arange(len(spikes))
 #     evens = np.where(trialns % 2 == 0)[0]
 #     odds = np.where(trialns % 2 != 0)[0]
-        
+
 #     even_psth = psth(spikes[evens],duration,smooth=smooth,dsample=dsample)
 #     odd_psth = psth(spikes[odds],duration,smooth=smooth,dsample=dsample)
 #     return np.corrcoef(even_psth,odd_psth)[0][1]
@@ -331,7 +336,7 @@ def cosbasis(dur,ncos,lin=1,peaks=None,norm=False,retfn=False):
         tobas = lambda v: np.matmul(v,np.linalg.pinv(basis).T)
         frombas = lambda v: np.matmul(basis,np.asarray(v).T).T
         return basis, frombas, tobas
-    else: 
+    else:
         return basis
 
 def evenoddcorr(spikes,duration,smooth=1,dsample=10):
@@ -339,23 +344,26 @@ def evenoddcorr(spikes,duration,smooth=1,dsample=10):
     trialns = np.arange(len(spikes))
     evens = np.where(trialns % 2 == 0)[0]
     odds = np.where(trialns % 2 != 0)[0]
-        
+
     even_psth = psth(spikes[evens],duration,smooth=smooth,dsample=dsample)
     odd_psth = psth(spikes[odds],duration,smooth=smooth,dsample=dsample)
     return np.corrcoef(even_psth,odd_psth)[0][1]
 
-def load_crcns(cell,stim_type,nspec,t_dsample,compress=1,gammatone=True,root="/home/data/crcns/",names=False):
-    spikesroot = root + "/all_cells/" + cell + "/" + stim_type +"/"
-    stimroot = root + "/all_stims/"
+def load_crcns(cell, stim_type, nspec, t_dsample, compress=1,
+               gammatone=True, root="/home/data/crcns/", names=False):
+    """Load data from CRCNS repository"""
+    spikesroot = os.path.join(root, "all_cells", cell, stim_type)
+    stimroot = os.path.join(root, all_stims)
 
     spikefiles = [f for f in next(walk(spikesroot))[2] if len(f.split(".")) == 2]
     stimfiles = [f.split(".")[0] + ".wav" for f in spikefiles]
 
-    stims,durations = load_sound_data(stimfiles, stimroot, dsample=t_dsample,sres=nspec,gammatone=gammatone,compress=compress)
+    stims, durations = load_sound_data(stimfiles, stimroot, dsample=t_dsample,
+                                       sres=nspec, gammatone=gammatone, compress=compress)
     spikes_data, spiky_data = load_spikes_data(spikefiles, spikesroot, durations)
-    
+
     out = [stims,durations,spikes_data,spiky_data]
-    if names: 
+    if names:
         out.append(stimfiles)
     return out
 
@@ -391,28 +399,28 @@ def dstrf_sample_validate(model,sample,stims,psth,t_dsample=1,psth_smooth=1,ssca
     smpl_corr = []
     psths = []
     thresh = None
-    
+
     for s,p in zip(stims,psth):
         spky = []
         for i in range(ntrials):
-            trace, spikes = model.run(s) 
-            if np.ndim(trace) > 1: 
+            trace, spikes = model.run(s)
+            if np.ndim(trace) > 1:
                 V, thresh = trace.T[:2]
-            else: 
+            else:
                 V = trace
             spky.append(spk.SpikeTrain(spikes,[0,len(trace)]))
-        
+
         psth = psth_spiky(spky,binres=1,smooth=psth_smooth,dsample=t_dsample)
         corr = np.corrcoef(psth-np.mean(psth),p-np.mean(p))[0][1]
         smpl_corr.append(corr)
         psths.append(psth)
-        
+
     return smpl_corr, psths
 
 def posterior_predict_corr(model,stims,data,flatchain,t_dsample=1,psth_smooth=1,nsamples=100,bootstrap=False,ntrials=1):
     corrs = []
     psths = []
-    
+
     for s,d in zip(stims,data):
         spks = []
         idx = [None]
@@ -426,11 +434,11 @@ def posterior_predict_corr(model,stims,data,flatchain,t_dsample=1,psth_smooth=1,
             trace, spikes = model.run(s)
             spky = spk.SpikeTrain(spikes,[0,len(trace)])
             spks.append(spky)
-            
+
         psth = psth_spiky(spks,1,t_dsample,psth_smooth)
-        corrs.append(np.corrcoef(psth-np.mean(psth),d-np.mean(d))[0][1])     
+        corrs.append(np.corrcoef(psth-np.mean(psth),d-np.mean(d))[0][1])
         psths.append(psth)
-    
+
     return corrs, psths
 
 def glm_sample_validate(model,sample,stims,psth_data,ntrials=10,smooth=1,dsample=0):
@@ -468,7 +476,7 @@ def load_rothman(model,nspec,t_dsample,compress=1,gammatone=True,root="/scratch/
 
     stims,durations = load_sound_data(stimfiles,root+model,dsample=t_dsample,sres=nspec,gammatone=gammatone,compress=compress)
     spikes_data, spiky_data = load_spikes_data(spikefiles,root+model, durations,ts_file=False)
-    
+
     return stims,durations,spikes_data,spiky_data
 
 class hyper_opt:
@@ -482,11 +490,11 @@ class hyper_opt:
         self.norm=norm
         self.center=center
         self.model=cosstrf
-    
+
     def run(self,theta):
         c,n,l = np.rint(theta).astype(int)
-    
-        try: 
+
+        try:
             tbas, fromt, tot = cosbasis(self.tlen,n,l,retfn=True,norm=True)
             SPEC,TIM = factorize(self.filt,c)
             filt_start = np.hstack((SPEC.flatten(),tot(TIM).flatten()))
@@ -496,13 +504,13 @@ class hyper_opt:
             out = 0
             for s,p in zip(self.stims,self.psth):
                 out -= np.sum(np.power(strf_model.run(s) - p,2))
-            
+
             k = c*(n+self.nspec)
-            
+
             return 2*k-2*out
         except (ValueError,np.linalg.LinAlgError) as e:
             return np.inf
-        
+
     def search(self,bounds=[slice(1,10,1),slice(2,30,1),slice(1,1e3,1e2)]):
         from scipy.optimize import brute
-        return np.rint(brute(self.run,bounds)).astype(int)   
+        return np.rint(brute(self.run,bounds)).astype(int)

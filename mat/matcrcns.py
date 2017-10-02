@@ -1,4 +1,3 @@
-
 # coding: utf-8
 
 # # MAT dSTRF CRCNS fit
@@ -44,7 +43,7 @@ coslin = 1
 norm = True
 center = True
 
-# data parameters 
+# data parameters
 nspec = 30
 t_dsample = 5
 tlen = int(np.rint(150/t_dsample))
@@ -132,7 +131,7 @@ Iapp = []
 for s,dur in zip(stims,durations):
     R = resample(strf_model.run(s),dur)
     Iapp.append(R*scale)
-    
+
 assim_Iapp, test_Iapp = np.split(Iapp,[num_assim_stims])
 
 # initalize the mat model
@@ -165,7 +164,7 @@ for i,p,d in zip(test_Iapp,test_psth,test_dur):
     trace,spikes = mat_map.run(i)
     mat_psth = utils.psth_spiky(pyspk.SpikeTrain(spikes,[0,d]),binres=1,smooth=psth_smooth,dsample=t_dsample)
     mat_corr.append(np.corrcoef(p,mat_psth)[0][1])
-        
+
 start = np.hstack((filt_start,mml))
 print("\nFilt R: {:.3f}, MAT R: {:.3f}".format(param_corr,np.mean(mat_corr)))
 

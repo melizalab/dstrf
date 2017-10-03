@@ -26,24 +26,16 @@ class get_pybind_include(object):
 
 
 include_dirs = [get_pybind_include(),
-                get_pybind_include(user=True),
-                "include/eigen"]
+                get_pybind_include(user=True)]
 
-# if sys.platform == 'darwin':
-#     include_dirs.append("/opt/local/include/eigen3")
-# elif sys.platform == 'linux2':
-#     include_dirs.append("/usr/include/eigen3")
-
-
-ext_modules = []
-# ext_modules = [
-#     Extension(
-#         'cneurons',
-#         ['src/cneurons.cpp'],
-#         include_dirs= include_dirs,
-#         language='c++'
-#     ),
-# ]
+ext_modules = [
+    Extension(
+        'dstrf.mat',
+        ['src/mat.cpp'],
+        include_dirs= include_dirs,
+        language='c++'
+    ),
+]
 
 
 # As of Python 3.6, CCompiler has a `has_flag` method.
@@ -52,14 +44,17 @@ def has_flag(compiler, flagname):
     """Return a boolean indicating whether a flag name is supported on
     the specified compiler.
     """
-    import tempfile
-    with tempfile.NamedTemporaryFile('w', suffix='.cpp') as f:
-        f.write('int main (int argc, char **argv) { return 0; }')
-        try:
-            compiler.compile([f.name], extra_postargs=[flagname])
-        except setuptools.distutils.errors.CompileError:
-            return False
-    return True
+    try:
+        return compiler.has_flag(flagname)
+    except AttributeError:
+        import tempfile
+        with tempfile.NamedTemporaryFile('w', suffix='.cpp') as f:
+            f.write('int main (int argc, char **argv) { return 0; }')
+            try:
+                compiler.compile([f.name], extra_postargs=[flagname])
+            except setuptools.distutils.errors.CompileError:
+                return False
+        return True
 
 
 def cpp_flag(compiler):

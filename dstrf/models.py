@@ -37,6 +37,7 @@ class cosstrf():
             r = nfutils.normalize(r,center=self.center)
         return r
 
+
 # strf model with time in cosine basis (a la Pillow)
 class cosstrf_design():
     def __init__(self, channels, nspec, tlen, ncos=10,coslin=1,normalize=False,center=False):
@@ -293,6 +294,7 @@ class adex_zero_centered():
         trace = self.nrn.simulate(len(iapp),1)
         spikes = det.send(trace[:,0])
         return (trace,spikes)
+
 
 class dstrf_adex():
     def __init__(self,channels=1,nspec=15,tlen=30,ncos=10,coslin=1,upsample=1,

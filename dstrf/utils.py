@@ -50,10 +50,12 @@ def strf(resolution=50,time=50,maxfreq=8000,latency=0,frequency=0,A=0.25,sigma=0
     Gtf = A*np.exp(-sigma**2*tprime**2-gamma**2*fprime**2)*(1-alpha**2*sigma**2*tprime**2)*(1-beta**2*gamma**2*fprime**2)
     return (Gtf,tscale,f)
 
+
 def design_matrix(stims,rs,twidth):
     X = np.vstack([np.hstack([sp.linalg.hankel(f[:-twidth+2],f[-twidth:]) for f in s]) for s in stims])
     R = np.hstack(r[twidth-2:] for r in rs)
     return X,R
+
 
 def ps_design(stims,rs,pwidth,twidth):
     X = np.vstack([sp.linalg.hankel(s[twidth-pwidth-1:-pwidth],s[-pwidth:]) for s in stims])
@@ -456,9 +458,11 @@ def specs_to_designs(specs,tlen,pad="edge"):
     dummy = [[]]*len(specs)
     return [design_matrix([np.pad(s,((0,0),(tlen-1,0)),pad)],[p],tlen)[0] for s,p in zip(specs,dummy)]
 
+
 def spksbin_to_designs(spks,tlen,plen,pad="edge"):
     dummy = [[]]*len(specs)
     return [[ps_design([np.pad(s,(tlen-1,0),pad)],[psth[0]],plen,tlen)[0] for s in ss ] for ss in dummy]
+
 
 def load_rothman(model,nspec,t_dsample,compress=1,gammatone=True,root="/scratch/mcb2x/modeldata/sigma5/"):
     stimfiles = []

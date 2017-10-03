@@ -8,18 +8,18 @@ import scipy as sp
 
 
 def design_matrix(spec, ntau):
-    """Convert a (nfreq, nt) spectrogram into a (nt + ntau, nfreq*ntau) design matrix"""
+    """Convert a (nfreq, nt) spectrogram into a (nt, nfreq*ntau) design matrix"""
     from scipy.linalg import hankel
     nf, nt = spec.shape
-    X = np.zeros((nt + ntau, nfreq * ntau), dtype=spec.dtype)
+    X = np.zeros((nt, nf * ntau), dtype=spec.dtype)
     padding = np.zeros(ntau - 1, dtype=spec.dtype)
     for i in range(nf):
         h = hankel(np.concatenate([padding, spec[i, :(-ntau + 1)]]), spec[i, -ntau:])
-        X[:, (i * tau):((i + 1) * tau)] = h
+        X[:, (i * ntau):((i + 1) * ntau)] = h
     return X
 
 
-def strf_vec(strf):
+def as_vector(strf):
     """Convert a (nfreq, ntau) kernel to a vector that can be used for matrix convolution
 
     The kernel must be time-inverted (i.e., large tau indices are short lags)

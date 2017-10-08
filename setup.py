@@ -29,12 +29,12 @@ include_dirs = [get_pybind_include(),
                 get_pybind_include(user=True)]
 
 ext_modules = [
-    Extension(
-        'dstrf.mat',
-        ['src/mat.cpp'],
-        include_dirs= include_dirs,
-        language='c++'
-    ),
+    # Extension(
+    #     'dstrf.mat',
+    #     ['src/mat.cpp'],
+    #     include_dirs= include_dirs,
+    #     language='c++'
+    # ),
 ]
 
 
@@ -107,6 +107,7 @@ setup(
     long_description="",
     install_requires = [
         "numpy>=1.10",
+        "mat_neuron==0.4"
     ],
 
     author="Tyler Robbins",

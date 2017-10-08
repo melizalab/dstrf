@@ -20,7 +20,7 @@ def make_likelihood(stim_design, spike_design, spikes, stim_dt, spike_dt):
     of the parameters is as follows: ω, α1 ... αN, k1 ... kN
 
     """
-    from theano import function, shared, sparse, gradient
+    from theano import function, config, shared, sparse, gradient
     import theano.tensor as T
     import scipy.sparse as sps
 
@@ -31,7 +31,7 @@ def make_likelihood(stim_design, spike_design, spikes, stim_dt, spike_dt):
         raise ValueError("size of design matrices does not match sampling rates")
     # make an interpolation matrix
     interp = sps.kron(sps.eye(nframes),
-                      np.ones((upsample, 1), dtype='i'),
+                      np.ones((upsample, 1), dtype=config.floatX),
                       format='csc')
 
     M = shared(interp)

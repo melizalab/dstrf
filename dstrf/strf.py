@@ -27,6 +27,16 @@ def as_vector(strf):
     return np.asarray(strf, order='C').flatten()
 
 
+def correlate(stim_design, spikes):
+    """Calculate correlation between stim (as design matrix) and spikes (i.e., spike-triggered average)"""
+    nframes, nfeat = stim_design.shape
+    nbins = spikes.size
+    upsample = nbins // nframes
+    # coarse binning of stimulus
+    psth = np.sum(spikes.reshape(nframes, upsample), axis=1)
+    return np.dot(stim_design.T, psth) / np.sum(psth)
+
+
 def strf(nfreq, ntau, f_max, f_peak, t_peak, ampl, f_sigma, t_sigma, f_alpha, t_alpha):
     """Construct a parametric STRF
 

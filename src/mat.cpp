@@ -13,7 +13,7 @@ typedef double time_type;
 typedef int spike_type;
 
 py::array
-predict_adaptation(const py::array_t<spike_type> spikes, value_type tau, time_type dt)
+adaptation(const py::array_t<spike_type> spikes, value_type tau, time_type dt)
 {
         auto S = spikes.unchecked<1>();
         const size_t N = spikes.size();
@@ -27,9 +27,7 @@ predict_adaptation(const py::array_t<spike_type> spikes, value_type tau, time_ty
                 // storing the result of the filter
                 h *= A;
                 Yptr(i) = h;
-                if (S[i]) {
-                        h += 1;
-                }
+                h += S[i];
         }
         return Y;
 }
@@ -49,7 +47,8 @@ predict_adaptation(const py::array_t<spike_type> spikes, value_type tau, time_ty
 
 PYBIND11_MODULE(mat, m) {
         m.doc() = "multi-timescale adaptive threshold neuron model implementation";
-        m.def("predict_adaptation", &predict_adaptation);
+        m.def("adaptation", &adaptation, "convolve spike train with exponential adaptation kernel",
+              py::arg("spikes"), py::arg("tau"), py::arg("dt"));
 
 #ifdef VERSION_INFO
         m.attr("__version__") = py::str(VERSION_INFO);

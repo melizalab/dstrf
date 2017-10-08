@@ -7,7 +7,7 @@ import numpy as np
 import scipy as sp
 
 
-def design_matrix(spec, ntau):
+def lagged_matrix(spec, ntau):
     """Convert a (nfreq, nt) spectrogram into a (nt, nfreq*ntau) design matrix"""
     from scipy.linalg import hankel
     nf, nt = spec.shape

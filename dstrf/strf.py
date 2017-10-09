@@ -10,6 +10,8 @@ import scipy as sp
 def lagged_matrix(spec, ntau):
     """Convert a (nfreq, nt) spectrogram into a (nt, nfreq*ntau) design matrix"""
     from scipy.linalg import hankel
+    if spec.ndim == 1:
+        spec = np.expand_dims(spec, 0)
     nf, nt = spec.shape
     X = np.zeros((nt, nf * ntau), dtype=spec.dtype)
     padding = np.zeros(ntau - 1, dtype=spec.dtype)
@@ -22,9 +24,17 @@ def lagged_matrix(spec, ntau):
 def as_vector(strf):
     """Convert a (nfreq, ntau) kernel to a vector that can be used for matrix convolution
 
-    The kernel must be time-inverted (i.e., large tau indices are short lags)
+    To be compatible with the output of lagged_matrix, the kernel must be
+    time-inverted (i.e., large tau indices are short lags)
+
     """
-    return np.asarray(strf, order='C').flatten()
+    return np.ravel(strf, order='C')
+
+
+def as_matrix(strf, ntau):
+    """Convert an (nfreq * ntau,) kernel back into (nfreq, ntau) form"""
+    nfreq = strf.size // ntau
+    return strf.reshape(nfreq, ntau)
 
 
 def correlate(stim_design, spikes):

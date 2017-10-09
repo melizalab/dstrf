@@ -79,7 +79,7 @@ def make_likelihood(stim_design, spike_design, spikes, stim_dt, spike_dt):
     }
 
 
-def estimate(stim, spikes, n_rf_tau, alpha_taus, stim_dt, spike_dt, w0=None, **kwargs):
+def estimate(stim, spikes, n_rf_tau, alpha_taus, stim_dt, spike_dt, w0=None, dry_run=False, **kwargs):
     """Compute max-likelihood estimate of the MAT model parameters
 
     stim: stimulus, dimensions (nchannels, nframes)
@@ -89,11 +89,14 @@ def estimate(stim, spikes, n_rf_tau, alpha_taus, stim_dt, spike_dt, w0=None, **k
     stim_dt: sampling rate of stimulus frames
     spike_dt: sampling rate of spike bins
     w0: initial guess at parameters (optional)
+    dry_run: if True, return likelihood functions but don't run the optimization
 
     Additional arguments are passed to scipy.optimize.fmin_ncg
 
     If there are multiple trials for a given stimulus, then spikes becomes
     (nbins, ntrials)
+
+    Returns parameter estimates
 
     """
     from theano import config
@@ -124,7 +127,9 @@ def estimate(stim, spikes, n_rf_tau, alpha_taus, stim_dt, spike_dt, w0=None, **k
         w0 = np.r_[0, np.zeros(n_spk_tau), sta]
 
     lfuns = make_likelihood(X_stim, X_spike, spikes, stim_dt, spike_dt)
+    if dry_run:
+        return lfuns
 
     maxiter = kwargs.pop("maxiter", 100)
     return op.fmin_ncg(lfuns['loglike'], w0, lfuns['gradient'],
-                       fhess=lfuns['hessian'], maxiter=maxiter, **kwargs)
+                     fhess=lfuns['hessian'], maxiter=maxiter, **kwargs)

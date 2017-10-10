@@ -355,7 +355,7 @@ def load_crcns(cell, stim_type, nspec, t_dsample, compress=1,
                gammatone=True, root="/home/data/crcns/", names=False):
     """Load data from CRCNS repository"""
     spikesroot = os.path.join(root, "all_cells", cell, stim_type)
-    stimroot = os.path.join(root, all_stims)
+    stimroot = os.path.join(root, "all_stims")
 
     spikefiles = [f for f in next(walk(spikesroot))[2] if len(f.split(".")) == 2]
     stimfiles = [f.split(".")[0] + ".wav" for f in spikefiles]

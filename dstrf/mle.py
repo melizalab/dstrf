@@ -69,16 +69,81 @@ def make_likelihood(stim_design, spike_design, spikes, stim_dt, spike_dt):
     mu = Vi - H - dc
     ll = T.exp(mu).sum() * dt - mu[spk.nonzero()].sum()
     dL = T.grad(ll, w)
-    ddL = gradient.hessian(ll, w)
+    # ddL = gradient.hessian(ll, w)
     ddLv = T.grad(T.sum(dL * v), w)
 
     return {"X_stim": Xstim, "X_spike": Xspke, "spikes": spk,
+            "V": function([w], Vx),
             "lci": function([w], mu),
             "loglike": function([w], ll),
             "gradient": function([w], dL),
-            "hessian": function([w], ddL),
+            # "hessian": function([w], ddL),
             "hessianv": function([w, v], ddLv)
     }
+
+
+class estimator(object):
+    """Compute max-likelihood estimate of the MAT model parameters
+
+    stim: stimulus, dimensions (nchannels, nframes)
+    spikes: spike response, dimensions (nbins,)
+    n_rf_tau: number of time lags in the kernel
+    alpha_taus: the tau values for the adaptation kernel
+    stim_dt: sampling rate of stimulus frames
+    spike_dt: sampling rate of spike bins
+
+    If there are multiple trials for a given stimulus, then spikes must have
+    dimensions (nbins, ntrials)
+
+    """
+    def __init__(self, stim, spikes, n_rf_tau, alpha_taus, stim_dt, spike_dt):
+        from theano import config
+        from dstrf.mat import adaptation
+        from dstrf.strf import lagged_matrix
+        import scipy.optimize as op
+        self.dtype = config.floatX
+
+        if stim.ndim == 1:
+            stim = np.expand_dims(stim, 0)
+        if spikes.ndim == 1:
+            spikes = np.expand_dims(spikes, 1)
+        nchan, nframes = stim.shape
+        nbins, ntrials = spikes.shape
+        self.n_spk_tau = len(alpha_taus)
+
+        spikes = spikes.astype(self.dtype)
+        X_stim = lagged_matrix(stim, n_rf_tau).astype(self.dtype)
+        X_spike = np.zeros((nbins, self.n_spk_tau, ntrials), dtype=self.dtype)
+        for i in range(ntrials):
+            for j, tau in enumerate(alpha_taus):
+                X_spike[:, j, i] = adaptation(spikes[:, i], tau, spike_dt)
+
+        lfuns = make_likelihood(X_stim, X_spike, spikes, stim_dt, spike_dt)
+        for k in ("X_stim", "X_spike", "spikes"):
+            setattr(self, "_" + k, lfuns[k])
+        for k in ("V", "lci", "loglike", "gradient", "hessianv"):
+            setattr(self, k, lfuns[k])
+
+    def sta(self):
+        """Calculate the spike-triggered average"""
+        from dstrf.strf import correlate
+        return correlate(self._X_stim.get_value(), self._spikes.get_value())
+
+    def estimate(self, w0=None, **kwargs):
+        """Compute max-likelihood estimate of the model parameters
+
+        w0: initial guess at parameters. If not supplied (default), use STA
+
+        Additional arguments are passed to scipy.optimize.fmin_ncg
+        """
+        import scipy.optimize as op
+        if w0 is None:
+            w0 = np.r_[0, np.zeros(self.n_spk_tau, dtype=self.dtype), self.sta()]
+
+        maxiter = kwargs.pop("maxiter", 100)
+        return op.fmin_ncg(self.loglike, w0, self.gradient,
+                           fhess_p=self.hessianv, maxiter=maxiter, **kwargs)
+
 
 
 def estimate(stim, spikes, n_rf_tau, alpha_taus, stim_dt, spike_dt, w0=None, dry_run=False, **kwargs):
@@ -105,6 +170,7 @@ def estimate(stim, spikes, n_rf_tau, alpha_taus, stim_dt, spike_dt, w0=None, dry
     from dstrf.mat import adaptation
     from dstrf.strf import lagged_matrix, correlate
     import scipy.optimize as op
+    ftype = config.floatX
 
     if stim.ndim == 1:
         stim = np.expand_dims(stim, 0)
@@ -118,19 +184,20 @@ def estimate(stim, spikes, n_rf_tau, alpha_taus, stim_dt, spike_dt, w0=None, dry
     if w0 is not None and  w0.size != (1 + n_spk_tau + n_rf_tau):
         raise ValueError("w0 needs to be a vector with size {}".format(1 + n_spk_tau + n_rf_tau))
 
-    X_stim = lagged_matrix(stim, n_rf_tau)
-    X_spike = np.zeros((nbins, n_spk_tau, ntrials), dtype=config.floatX)
+    spikes = spikes.astype(ftype)
+    X_stim = lagged_matrix(stim, n_rf_tau).astype(ftype)
+    X_spike = np.zeros((nbins, n_spk_tau, ntrials), dtype=ftype)
     for i in range(ntrials):
         for j, tau in enumerate(alpha_taus):
             X_spike[:, j, i] = adaptation(spikes[:, i], tau, spike_dt)
 
-    if w0 is None:
-        sta = correlate(X_stim, spikes)
-        w0 = np.r_[0, np.zeros(n_spk_tau), sta]
-
     lfuns = make_likelihood(X_stim, X_spike, spikes, stim_dt, spike_dt)
     if dry_run:
         return lfuns
+
+    if w0 is None:
+        sta = correlate(X_stim, spikes)
+        w0 = np.r_[0, np.zeros(n_spk_tau, dtype=ftype), sta]
 
     maxiter = kwargs.pop("maxiter", 100)
     return op.fmin_ncg(lfuns['loglike'], w0, lfuns['gradient'],

@@ -351,6 +351,7 @@ def evenoddcorr(spikes,duration,smooth=1,dsample=10):
     odd_psth = psth(spikes[odds],duration,smooth=smooth,dsample=dsample)
     return np.corrcoef(even_psth,odd_psth)[0][1]
 
+
 def load_crcns(cell, stim_type, nspec, t_dsample, compress=1,
                gammatone=True, root="/home/data/crcns/", names=False):
     """Load data from CRCNS repository"""

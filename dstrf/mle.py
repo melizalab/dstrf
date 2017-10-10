@@ -98,7 +98,7 @@ class estimator(object):
     """
     def __init__(self, stim, spikes, n_rf_tau, alpha_taus, stim_dt, spike_dt):
         from theano import config
-        from dstrf.mat import adaptation
+        from mat_neuron._model import adaptation
         from dstrf.strf import lagged_matrix
         import scipy.optimize as op
         self.dtype = config.floatX
@@ -115,8 +115,7 @@ class estimator(object):
         X_stim = lagged_matrix(stim, n_rf_tau).astype(self.dtype)
         X_spike = np.zeros((nbins, self.n_spk_tau, ntrials), dtype=self.dtype)
         for i in range(ntrials):
-            for j, tau in enumerate(alpha_taus):
-                X_spike[:, j, i] = adaptation(spikes[:, i], tau, spike_dt)
+            X_spike[:, :, i] = adaptation(spikes[:, i], alpha_taus, spike_dt)
 
         lfuns = make_likelihood(X_stim, X_spike, spikes, stim_dt, spike_dt)
         for k in ("X_stim", "X_spike", "spikes"):

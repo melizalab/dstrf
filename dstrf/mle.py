@@ -70,12 +70,14 @@ def make_likelihood(stim_design, spike_design, spikes, stim_dt, spike_dt):
     ll = T.exp(mu).sum() * dt - mu[spk.nonzero()].sum()
     dL = T.grad(ll, w)
     ddL = gradient.hessian(ll, w)
+    ddLv = T.grad(T.sum(dL * v), w)
 
     return {"X_stim": Xstim, "X_spike": Xspke, "spikes": spk,
             "lci": function([w], mu),
             "loglike": function([w], ll),
             "gradient": function([w], dL),
-            "hessian": function([w], ddL)
+            "hessian": function([w], ddL),
+            "hessianv": function([w, v], ddLv)
     }
 
 
@@ -132,4 +134,4 @@ def estimate(stim, spikes, n_rf_tau, alpha_taus, stim_dt, spike_dt, w0=None, dry
 
     maxiter = kwargs.pop("maxiter", 100)
     return op.fmin_ncg(lfuns['loglike'], w0, lfuns['gradient'],
-                     fhess=lfuns['hessian'], maxiter=maxiter, **kwargs)
+                     fhess_p=lfuns['hessianv'], maxiter=maxiter, **kwargs)

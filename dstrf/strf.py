@@ -47,32 +47,7 @@ def correlate(stim_design, spikes):
     return np.dot(stim_design.T, psth) / np.sum(psth)
 
 
-def strf(nfreq, ntau, f_max, f_peak, t_peak, ampl, f_sigma, t_sigma, f_alpha, t_alpha):
-    """Construct a parametric STRF
-
-    nfreq: resolution of the filter in pixels
-    ntau: time window of the filter in ms
-    f_max: maximum frequency of the signal
-    f_peak: center frequency for the filter
-    t_peak: offset between stimulus and response in ms (range: 0 to ntau)
-    ampl:   amplitude of the wavelet peak
-    f_sigma: width of the filter in the frequency axis -- bigger gamma = narrower frequency band
-    t_sigma: width of the filter in the time axis -- bigger sigma = narrower time band
-    f_alpha: depth of inhibitory sidebands on frequency axis -- bigger f_alpha = deeper sidebands
-    t_alpha: depth of inhibitory sidebands on time axis -- bigger t_alpha = deeper sidebands
-    Returns the RF (nfreq, ntau), f (nfreq,), and tau (ntau,)
-    """
-    ntau -= 1
-    scale = nfreq / 50.0
-    t = np.arange(float(np.negative(ntau)), 1)
-    tscale = np.arange(np.negative(ntau), 1, 2)
-    x = t_peak
-    f = np.arange(0, f_max + 1, float(f_max) / nfreq)
-    y = f_peak
-    tc = t + x
-    fc = f - y
-    tprime, fprime = np.meshgrid(tc, fc)
-    t_sigma = t_sigma / scale
-    Gtf = (ampl * np.exp(-t_sigma**2 * tprime**2 - f_sigma**2 * fprime**2) *
-           (1 - t_alpha**2 * t_sigma**2 * tprime**2) * (1 - f_alpha**2 * f_sigma**2 * fprime**2))
-    return Gtf, tscale, f
+def subspace(rf1, rf2):
+    """Calculate the angle between two RFs as a measure of error"""
+    cos_theta = np.sum(rf1 * rf2) / np.sqrt(np.sum(rf1 ** 2) * np.sum(rf2 ** 2))
+    return np.acos(cos_theta)

@@ -65,7 +65,7 @@ def make_likelihood(stim_design, spike_design, spikes, stim_dt, spike_dt):
     Vx = T.dot(Xstim, k)
     # Vx has to be promoted to a matrix for structured_dot to work
     Vi = sparse.structured_dot(M, T.shape_padright(Vx))
-    H = T.dot(Xspke.dimshuffle([2, 0 , 1]), alpha).T
+    H = T.dot(Xspke.dimshuffle([2, 0, 1]), alpha).T
     mu = Vi - H - dc
     ll = T.exp(mu).sum() * dt - mu[spk.nonzero()].sum()
     dL = T.grad(ll, w)
@@ -100,7 +100,6 @@ class estimator(object):
         from theano import config
         from mat_neuron._model import adaptation
         from dstrf.strf import lagged_matrix
-        import scipy.optimize as op
         self.dtype = config.floatX
 
         if stim.ndim == 1:

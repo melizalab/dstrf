@@ -6,6 +6,22 @@ from __future__ import print_function, division, absolute_import
 import numpy as np
 
 
+def convolve(spec, strf):
+    """Convolve (nfreq, nt) spectrogram with a (nfreq, ntau) spectrotemporal kernel.
+
+    This function uses the numpy convolve function, but the kernel should be
+    flipped (large indices are short lags) for compatibility with lagged_matrix.
+
+    """
+    if spec.ndim == 1:
+        spec = np.expand_dims(spec, 0)
+    nf, nt = spec.shape
+    X = np.zeros(nt)
+    for i in range(nf):
+        X += np.convolve(spec[i], strf[i], mode="full")[:nt]
+    return X.squeeze()
+
+
 def lagged_matrix(spec, basis):
     """Convert a (nfreq, nt) spectrogram into a design matrix
 
@@ -45,10 +61,25 @@ def as_vector(strf):
     return np.ravel(strf, order='C')
 
 
-def as_matrix(strf, ntau):
-    """Convert an (nfreq * ntau,) kernel back into (nfreq, ntau) form"""
-    nfreq = strf.size // ntau
-    return strf.reshape(nfreq, ntau)
+def as_matrix(k, basis):
+    """Convert an (nfreq * nbasis,) kernel k back into an (nfreq, ntau) strf form
+
+    As with lagged_matrix, if 'basis' argument is a positive integer, it's
+    interpreted as the number of time lags. If it's an (ntau, nbasis) matrix,
+    then it's interpreted as a set of temporal basis functions, and the RF
+    is projected back into the standard discrete time basis.
+
+    """
+    if np.isscalar(basis):
+        ntau = nbasis = basis
+    else:
+        ntau, nbasis = basis.shape
+    nfreq = k.size // nbasis
+    rf = k.reshape(nfreq, nbasis)
+    if np.isscalar(basis):
+        return rf
+    else:
+        return from_basis(rf, basis)
 
 
 def correlate(stim_design, spikes):

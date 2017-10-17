@@ -105,10 +105,26 @@ def cosbasis(nt, nb, peaks=None, lin=10):
 
 
 def to_basis(v, basis):
-    """Find best projection of v into basis"""
+    """Find best projection of filter v into basis"""
     return np.dot(v, np.linalg.pinv(basis).T)
 
 
 def from_basis(v, basis):
-    """Calculate projection of v from basis to unit vector space"""
+    """Calculate projection of filter v from basis to unit vector space"""
     return np.dot(basis, v.T).T
+
+
+def factorize(k, rank=1, thresh=None):
+    """Compute low-rank approximation of (nf, nt) filter k
+
+    Returns k_f (nf, rank), k_t (rank, nt) such that np.dot(k_f, k_t) ~= k.
+
+    If thresh is None, the rank is as specified by the rank parameter. If thresh
+    is not None, the rank will be equal to the number of eigenvalues of k that
+    are greater than thresh, or rank, whichever is larger.
+
+    """
+    U, s, V = np.linalg.svd(k)
+    if thresh is not None:
+        rank = max(rank, sum(s > thresh))
+    return (U[:, :rank], V[:rank] * s[:rank, np.newaxis], )

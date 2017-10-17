@@ -25,11 +25,8 @@ def make_likelihood(stim_design, spike_design, spikes, stim_dt, spike_dt):
     α1 ... αN, k1 ... kN. The shared variables can be used to alter the design
     matrices in place, but it's often simpler just to call this function again.
 
-    NB: this function will throw a rather verbose warning about an optimization
-    failure; however, the returned functions will work just fine.
-
     """
-    from theano import function, config, shared, sparse, gradient
+    from theano import function, config, shared, sparse
     import theano.tensor as T
     import scipy.sparse as sps
 

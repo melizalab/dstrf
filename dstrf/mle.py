@@ -59,13 +59,13 @@ def make_likelihood(stim_design, spike_design, spikes, stim_dt, spike_dt):
     # split out the parameter vector
     w = T.vector('w')
     dc = w[0]
-    alpha = w[1:(nalpha+1)]
-    k = w[(nalpha+1):]
+    h = w[1:(nalpha + 1)]
+    k = w[(nalpha + 1):]
     v = T.vector('v')
     Vx = T.dot(Xstim, k)
     # Vx has to be promoted to a matrix for structured_dot to work
     Vi = sparse.structured_dot(M, T.shape_padright(Vx))
-    H = T.dot(Xspke.dimshuffle([2, 0, 1]), alpha).T
+    H = T.dot(Xspke.dimshuffle([2, 0, 1]), h).T
     mu = Vi - H - dc
     ll = T.exp(mu).sum() * dt - mu[spk.nonzero()].sum()
     dL = T.grad(ll, w)
@@ -79,7 +79,7 @@ def make_likelihood(stim_design, spike_design, spikes, stim_dt, spike_dt):
             "gradient": function([w], dL),
             # "hessian": function([w], ddL),
             "hessianv": function([w, v], ddLv)
-    }
+           }
 
 
 class estimator(object):
@@ -87,7 +87,7 @@ class estimator(object):
 
     stim: stimulus, dimensions (nchannels, nframes)
     spikes: spike response, dimensions (nbins,)
-    n_rf_tau: number of time lags in the kernel
+    rf_tau: number of time lags in the kernel OR a set of temporal basis functions
     alpha_taus: the tau values for the adaptation kernel
     stim_dt: sampling rate of stimulus frames
     spike_dt: sampling rate of spike bins
@@ -141,62 +141,3 @@ class estimator(object):
         maxiter = kwargs.pop("maxiter", 100)
         return op.fmin_ncg(self.loglike, w0, self.gradient,
                            fhess_p=self.hessianv, maxiter=maxiter, **kwargs)
-
-
-
-def estimate(stim, spikes, n_rf_tau, alpha_taus, stim_dt, spike_dt, w0=None, dry_run=False, **kwargs):
-    """Compute max-likelihood estimate of the MAT model parameters
-
-    stim: stimulus, dimensions (nchannels, nframes)
-    spikes: spike response, dimensions (nbins,)
-    n_rf_tau: number of time lags in the kernel
-    alpha_taus: the tau values for the adaptation kernel
-    stim_dt: sampling rate of stimulus frames
-    spike_dt: sampling rate of spike bins
-    w0: initial guess at parameters (optional)
-    dry_run: if True, return likelihood functions but don't run the optimization
-
-    Additional arguments are passed to scipy.optimize.fmin_ncg
-
-    If there are multiple trials for a given stimulus, then spikes becomes
-    (nbins, ntrials)
-
-    Returns parameter estimates
-
-    """
-    from theano import config
-    from dstrf.mat import adaptation
-    from dstrf.strf import lagged_matrix, correlate
-    import scipy.optimize as op
-    ftype = config.floatX
-
-    if stim.ndim == 1:
-        stim = np.expand_dims(stim, 0)
-    if spikes.ndim == 1:
-        spikes = np.expand_dims(spikes, 1)
-
-    nchan, nframes = stim.shape
-    nbins, ntrials = spikes.shape
-    n_spk_tau = len(alpha_taus)
-
-    if w0 is not None and  w0.size != (1 + n_spk_tau + n_rf_tau):
-        raise ValueError("w0 needs to be a vector with size {}".format(1 + n_spk_tau + n_rf_tau))
-
-    spikes = spikes.astype(ftype)
-    X_stim = lagged_matrix(stim, n_rf_tau).astype(ftype)
-    X_spike = np.zeros((nbins, n_spk_tau, ntrials), dtype=ftype)
-    for i in range(ntrials):
-        for j, tau in enumerate(alpha_taus):
-            X_spike[:, j, i] = adaptation(spikes[:, i], tau, spike_dt)
-
-    lfuns = make_likelihood(X_stim, X_spike, spikes, stim_dt, spike_dt)
-    if dry_run:
-        return lfuns
-
-    if w0 is None:
-        sta = correlate(X_stim, spikes)
-        w0 = np.r_[0, np.zeros(n_spk_tau, dtype=ftype), sta]
-
-    maxiter = kwargs.pop("maxiter", 100)
-    return op.fmin_ncg(lfuns['loglike'], w0, lfuns['gradient'],
-                     fhess_p=lfuns['hessianv'], maxiter=maxiter, **kwargs)

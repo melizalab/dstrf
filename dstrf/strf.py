@@ -18,7 +18,7 @@ def convolve(spec, strf):
     nf, nt = spec.shape
     X = np.zeros(nt)
     for i in range(nf):
-        X += np.convolve(spec[i], strf[i], mode="full")[:nt]
+        X += np.correlate(spec[i], strf[i], mode="full")[:nt]
     return X.squeeze()
 
 

@@ -119,10 +119,16 @@ class estimator(object):
         for k in ("V", "lci", "loglike", "gradient", "hessianv"):
             setattr(self, k, lfuns[k])
 
-    def sta(self):
+    def sta(self, center=False, scale=False):
         """Calculate the spike-triggered average"""
         from dstrf.strf import correlate
-        return correlate(self._X_stim.get_value(borrow=True), self._spikes.get_value(borrow=True))
+        spikes = self._spikes.get_value(borrow=True)
+        X_stim = self._X_stim.get_value(borrow=False)
+        if center:
+            X_stim -= X_stim.mean(0)
+        if scale:
+            X_stim /= X_stim.std(0)
+        return correlate(X_stim, spikes)
 
     def estimate(self, w0=None, **kwargs):
         """Compute max-likelihood estimate of the model parameters
@@ -133,7 +139,16 @@ class estimator(object):
         """
         import scipy.optimize as op
         if w0 is None:
-            w0 = np.r_[0, np.zeros(self.n_spk_tau, dtype=self.dtype), self.sta()]
+            # we need to make sure that the initial guess is reasonably good, or
+            # else the Hessian is unstable. This can happen when the stimulus is
+            # not gaussian. The hacky solution is to calculate the STA on a
+            # centered/scaled design matrix, and then rescale the STA so that
+            # V never gets above ~100
+            sta = self.sta(center=True, scale=True)
+            w0 = np.r_[0, np.zeros(self.n_spk_tau, dtype=self.dtype), sta]
+            Vmax = self.V(w0).max()
+            if Vmax > 100:
+                w0[3:] *= 90 / Vmax
 
         maxiter = kwargs.pop("maxiter", 100)
         return op.fmin_ncg(self.loglike, w0, self.gradient,

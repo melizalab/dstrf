@@ -6,7 +6,8 @@ mpi4py=2.0.0
 emcee==2.2.1
 neurofit==0.3.3
 pyspike==0.5.1
-toelis==2.0.0
+toelis==2.0.1
+ewave==1.0.5
 libtfr==2.0.2
 scikit-learn==0.18.1
 -e git+https://github.com/tdrobbins/gammatone@fb9390ed9fb249de52227a81283a0db0884c1da2#egg=Gammatone

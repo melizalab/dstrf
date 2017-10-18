@@ -89,6 +89,8 @@ def correlate(stim_design, spikes):
     upsample = nbins // nframes
     # coarse binning of stimulus
     psth = np.sum(spikes.reshape(nframes, upsample), axis=1)
+    # center variables to avoid explosions
+    #X = stim_design - stim_design.mean(0)
     return np.dot(stim_design.T, psth) / np.sum(psth)
 
 

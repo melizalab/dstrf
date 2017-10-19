@@ -25,8 +25,11 @@ def make_likelihood(stim_design, spike_design, spikes, stim_dt, spike_dt):
     α1 ... αN, k1 ... kN. The shared variables can be used to alter the design
     matrices in place, but it's often simpler just to call this function again.
 
+    The functions returned take two optional arguments, λ and α, which control
+    the L2 and L1 penalties.
+
     """
-    from theano import function, config, shared, sparse
+    from theano import function, config, shared, sparse, In
     import theano.tensor as T
     import scipy.sparse as sps
 
@@ -51,8 +54,11 @@ def make_likelihood(stim_design, spike_design, spikes, stim_dt, spike_dt):
     dt = shared(spike_dt)
     Xstim = shared(stim_design)
     Xspke = shared(spike_design)
-    spk = shared(spikes)
+    spkx, spky = map(shared, spikes.nonzero())
 
+    # regularization parameters
+    reg_lambda = T.scalar('lambda')
+    reg_alpha = T.scalar('alpha')
     # split out the parameter vector
     w = T.vector('w')
     dc = w[0]
@@ -64,19 +70,19 @@ def make_likelihood(stim_design, spike_design, spikes, stim_dt, spike_dt):
     Vi = sparse.structured_dot(M, T.shape_padright(Vx))
     H = T.dot(Xspke.dimshuffle([2, 0, 1]), h).T
     mu = Vi - H - dc
-    ll = T.exp(mu).sum() * dt - mu[spk.nonzero()].sum()
+    penalty = reg_lambda * T.dot(k, k) + reg_alpha * T.sqrt(T.dot(k, k) + 0.001)
+    ll = T.exp(mu).sum() * dt - mu[spkx, spky].sum() + penalty
     dL = T.grad(ll, w)
-    # ddL = gradient.hessian(ll, w)
     ddLv = T.grad(T.sum(dL * v), w)
 
-    return {"X_stim": Xstim, "X_spike": Xspke, "spikes": spk,
-            "V": function([w], Vx),
+    loglike = function([w, In(reg_lambda, value=0.), In(reg_alpha, value=0.)], ll)
+    gradient = function([w, In(reg_lambda, value=0.), In(reg_alpha, value=0.)], dL)
+    hessianv = function([w, v, In(reg_lambda, value=0.), In(reg_alpha, value=0.)], ddLv)
+    return {"V": function([w], Vx),
             "lci": function([w], mu),
-            "loglike": function([w], ll),
-            "gradient": function([w], dL),
-            # "hessian": function([w], ddL),
-            "hessianv": function([w, v], ddLv)
-           }
+            "loglike": loglike,
+            "gradient": gradient,
+            "hessianv": hessianv}
 
 
 class estimator(object):
@@ -107,30 +113,28 @@ class estimator(object):
         nbins, ntrials = spikes.shape
         self.n_spk_tau = len(alpha_taus)
 
-        spikes = spikes.astype(self.dtype)
-        X_stim = lagged_matrix(stim, n_rf_tau).astype(self.dtype)
-        X_spike = np.zeros((nbins, self.n_spk_tau, ntrials), dtype=self.dtype)
+        self._spikes = spikes.astype(self.dtype)
+        self._X_stim = lagged_matrix(stim, n_rf_tau).astype(self.dtype)
+        self._X_spike = np.zeros((nbins, self.n_spk_tau, ntrials), dtype=self.dtype)
         for i in range(ntrials):
-            X_spike[:, :, i] = adaptation(spikes[:, i], alpha_taus, spike_dt)
+            self._X_spike[:, :, i] = adaptation(spikes[:, i], alpha_taus, spike_dt)
 
-        lfuns = make_likelihood(X_stim, X_spike, spikes, stim_dt, spike_dt)
-        for k in ("X_stim", "X_spike", "spikes"):
-            setattr(self, "_" + k, lfuns[k])
+        lfuns = make_likelihood(self._X_stim, self._X_spike, self._spikes, stim_dt, spike_dt)
         for k in ("V", "lci", "loglike", "gradient", "hessianv"):
             setattr(self, k, lfuns[k])
 
     def sta(self, center=False, scale=False):
         """Calculate the spike-triggered average"""
         from dstrf.strf import correlate
-        spikes = self._spikes.get_value(borrow=True)
-        X_stim = self._X_stim.get_value(borrow=False)
+        spikes = self._spikes
+        X_stim = self._X_stim
         if center:
             X_stim -= X_stim.mean(0)
         if scale:
             X_stim /= X_stim.std(0)
         return correlate(X_stim, spikes)
 
-    def estimate(self, w0=None, **kwargs):
+    def estimate(self, w0=None, reg_lambda=0, reg_alpha=0, avextol=1e-6, maxiter=300, **kwargs):
         """Compute max-likelihood estimate of the model parameters
 
         w0: initial guess at parameters. If not supplied (default), use STA
@@ -150,6 +154,5 @@ class estimator(object):
             if Vmax > 100:
                 w0[3:] *= 90 / Vmax
 
-        maxiter = kwargs.pop("maxiter", 100)
-        return op.fmin_ncg(self.loglike, w0, self.gradient,
-                           fhess_p=self.hessianv, maxiter=maxiter, **kwargs)
+        return op.fmin_ncg(self.loglike, w0, self.gradient, fhess_p=self.hessianv,
+                           args=(reg_lambda, reg_alpha), avextol=avextol, maxiter=maxiter, **kwargs)

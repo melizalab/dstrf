@@ -127,12 +127,12 @@ class estimator(object):
         """Calculate the spike-triggered average"""
         from dstrf.strf import correlate
         spikes = self._spikes
-        X_stim = self._X_stim
+        X = self._X_stim.copy()
         if center:
-            X_stim -= X_stim.mean(0)
+            X -= X.mean(0)
         if scale:
-            X_stim /= X_stim.std(0)
-        return correlate(X_stim, spikes)
+            X /= X.std(0)
+        return correlate(X, spikes)
 
     def estimate(self, w0=None, reg_lambda=0, reg_alpha=0, avextol=1e-6, maxiter=300, **kwargs):
         """Compute max-likelihood estimate of the model parameters

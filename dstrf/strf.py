@@ -158,4 +158,5 @@ def factorize(k, rank=1, thresh=None):
     U, s, V = np.linalg.svd(k)
     if thresh is not None:
         rank = max(rank, sum(s > thresh))
+    # TODO: flip signs if shape is opposite to input
     return (U[:, :rank], V[:rank] * s[:rank, np.newaxis], )

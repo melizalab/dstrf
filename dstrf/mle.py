@@ -6,7 +6,7 @@ from __future__ import print_function, division, absolute_import
 import numpy as np
 
 
-def make_likelihood(stim_design, spike_design, spikes, stim_dt, spike_dt):
+def make_likelihood(stim_design, spike_design, spikes, stim_dt, spike_dt, nlin="exp"):
     """Generate functions for evaluating negative log-likelihood of model
 
     stim_design: design matrix for the stimulus (nframes x nk)
@@ -14,6 +14,7 @@ def make_likelihood(stim_design, spike_design, spikes, stim_dt, spike_dt):
     spikes: spike array, dimension (nbins,)
     stim_dt: sampling rate of stimulus frames
     spike_dt: sampling rate of spike bins
+    nlin: the nonlinearity. Allowed values: "exp" (default), "softplus", "sigmoid"
 
     If there are multiple trials for a given stimulus, then spike_design becomes
     (nbins, nα, ntrials) and spikes becomes (nbins, ntrials)
@@ -30,6 +31,7 @@ def make_likelihood(stim_design, spike_design, spikes, stim_dt, spike_dt):
 
     """
     from theano import function, config, shared, sparse, In
+    from theano.tensor import nnet
     import theano.tensor as T
     import scipy.sparse as sps
 
@@ -64,15 +66,24 @@ def make_likelihood(stim_design, spike_design, spikes, stim_dt, spike_dt):
     dc = w[0]
     h = w[1:(nalpha + 1)]
     k = w[(nalpha + 1):]
-    v = T.vector('v')
-    Vx = T.dot(Xstim, k)
+    # elastic net penalty
+    penalty = reg_lambda * T.dot(k, k) + reg_alpha * T.sqrt(T.dot(k, k) + 0.001)
     # Vx has to be promoted to a matrix for structured_dot to work
+    Vx = T.dot(Xstim, k)
     Vi = sparse.structured_dot(M, T.shape_padright(Vx))
     H = T.dot(Xspke.dimshuffle([2, 0, 1]), h).T
     mu = Vi - H - dc
-    penalty = reg_lambda * T.dot(k, k) + reg_alpha * T.sqrt(T.dot(k, k) + 0.001)
-    ll = T.exp(mu).sum() * dt - mu[spkx, spky].sum() + penalty
+    if nlin == "exp":
+        lmb = T.exp(mu)
+    elif nlin == "softplus":
+        lmb = nnet.softplus(mu)
+    elif nlin == "sigmoid":
+        lmb = nnet.sigmoid(mu)
+    else:
+        raise ValueError("unknown nonlinearity type: {}".format(nlin))
+    ll = lmb.sum() * dt - T.log(lmb[spkx, spky]).sum() + penalty
     dL = T.grad(ll, w)
+    v = T.vector('v')
     ddLv = T.grad(T.sum(dL * v), w)
 
     loglike = function([w, In(reg_lambda, value=0.), In(reg_alpha, value=0.)], ll)
@@ -100,7 +111,7 @@ class estimator(object):
     dimensions (nbins, ntrials)
 
     """
-    def __init__(self, stim, spikes, n_rf_tau, alpha_taus, stim_dt, spike_dt):
+    def __init__(self, stim, spikes, n_rf_tau, alpha_taus, stim_dt, spike_dt, nlin="exp"):
         from theano import config
         from mat_neuron._model import adaptation
         from dstrf.strf import lagged_matrix
@@ -120,7 +131,7 @@ class estimator(object):
         for i in range(ntrials):
             self._X_spike[:, :, i] = adaptation(spikes[:, i], alpha_taus, spike_dt)
 
-        lfuns = make_likelihood(self._X_stim, self._X_spike, self._spikes, stim_dt, spike_dt)
+        lfuns = make_likelihood(self._X_stim, self._X_spike, self._spikes, stim_dt, spike_dt, nlin)
         for k in ("V", "V_interp", "lci", "loglike", "gradient", "hessianv"):
             setattr(self, k, lfuns[k])
 

@@ -79,6 +79,7 @@ def make_likelihood(stim_design, spike_design, spikes, stim_dt, spike_dt):
     gradient = function([w, In(reg_lambda, value=0.), In(reg_alpha, value=0.)], dL)
     hessianv = function([w, v, In(reg_lambda, value=0.), In(reg_alpha, value=0.)], ddLv)
     return {"V": function([w], Vx),
+            "V_interp": function([w], Vi),
             "lci": function([w], mu),
             "loglike": loglike,
             "gradient": gradient,
@@ -120,7 +121,7 @@ class estimator(object):
             self._X_spike[:, :, i] = adaptation(spikes[:, i], alpha_taus, spike_dt)
 
         lfuns = make_likelihood(self._X_stim, self._X_spike, self._spikes, stim_dt, spike_dt)
-        for k in ("V", "lci", "loglike", "gradient", "hessianv"):
+        for k in ("V", "V_interp", "lci", "loglike", "gradient", "hessianv"):
             setattr(self, k, lfuns[k])
 
     def sta(self, center=False, scale=False):

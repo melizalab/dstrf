@@ -160,3 +160,22 @@ def factorize(k, rank=1, thresh=None):
         rank = max(rank, sum(s > thresh))
     # TODO: flip signs if shape is opposite to input
     return (U[:, :rank], V[:rank] * s[:rank, np.newaxis], )
+
+
+def defactorize(v, nfreq, rank=1):
+    """Convert a factorized RF into the full-rank matrix
+
+    v - the factorized RF parameters as a 1D array with dimension (nfreq * rank
+    + ntau * rank). This vector can be produced by
+    np.concatenate([np.flatten(v) for v in factorize(RF, rank)])
+
+    """
+    nv = v.size
+    nfv = nfreq * rank
+    ntv = nv - nfv
+    ntau = int(ntv / rank)
+    assert nv == (nfreq + ntau) * rank, "dimensions of factorized/flattened RF don't match nfreq and rank"
+
+    k_f = v[:nfv].reshape((nfreq, rank))
+    k_t = v[nfv:].reshape((rank, ntau))
+    return np.dot(k_f, k_t)

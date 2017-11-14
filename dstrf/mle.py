@@ -160,11 +160,16 @@ class estimator(object):
             # not gaussian. The hacky solution is to calculate the STA on a
             # centered/scaled design matrix, and then rescale the STA so that
             # V never gets above ~100
-            sta = self.sta(center=True, scale=True)
-            w0 = np.r_[0, np.zeros(self.n_spk_tau, dtype=self.dtype), sta]
-            Vmax = self.V(w0).max()
-            if Vmax > 100:
-                w0[3:] *= 90 / Vmax
+            # sta = self.sta(center=True, scale=True)
+            # w0 = np.r_[0, np.zeros(self.n_spk_tau, dtype=self.dtype), sta]
+            # Vmax = self.V(w0).max()
+            # if Vmax > 100:
+            #     w0[3:] *= 90 / Vmax
+            dim = self._X_stim.shape[1]
+            nbins = self._spikes.shape[0]
+            meanrate = self._spikes.sum(0).mean() / nbins
+            w0 = np.r_[np.exp(meanrate),
+                       np.zeros(self.n_spk_tau + dim)].astype(self.dtype)
 
         return op.fmin_ncg(self.loglike, w0, self.gradient, fhess_p=self.hessianv,
                            args=(reg_lambda, reg_alpha), avextol=avextol, maxiter=maxiter, **kwargs)

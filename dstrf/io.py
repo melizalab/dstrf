@@ -70,7 +70,7 @@ def load_stimulus(path, window, step, f_min=0.5, f_max=8.0, f_count=30,
         freqs, ind = libtfr.fgrid(Fs, nfft, [f_min, f_max])
         Pxx = Pxx[ind, :]
     if compress is not None:
-        Pxx = np.log10(Pxx + compress)
+        Pxx = np.log10(Pxx + compress) - np.log10(compress)
     return Pxx, Pxx.shape[1] * step
 
 
@@ -98,9 +98,9 @@ def merge_data(seq, pad_before, pad_after, dt, fill_value=None):
     for i, d in enumerate(seq):
         s = d["stim"]
         nf, nt = s.shape
-        fv_before = fill_value or s[:, 0].mean()
+        fv_before = s[:, 0].mean() if fill_value is None else fill_value
         p_before = fv_before * np.ones((nf, n_before), dtype=s.dtype)
-        fv_after = fill_value or s[:, -1].mean()
+        fv_after = s[:, -1].mean() if fill_value is None else fill_value
         p_after = fv_after * np.ones((nf, n_after), dtype=s.dtype)
         padded_stims.extend((p_before, s, p_after))
 

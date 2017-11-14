@@ -83,13 +83,17 @@ def as_matrix(k, basis):
 
 
 def correlate(stim_design, spikes):
-    """Calculate correlation between stim (as design matrix) and spikes (i.e., spike-triggered average)"""
+    """Correlation between stim (as design matrix) and spikes (i.e., spike-triggered average)
+
+    NB: divide by variance of stimulus (or multiply by inverse covariance) to recover filter """
+    if spikes.ndim == 1:
+        spikes = np.expand_dims(spikes, 1)
+
     nframes, nfeat = stim_design.shape
-    nbins = spikes.size
-    upsample = nbins // nframes
+    nbins, ntrials = spikes.shape
     # coarse binning of stimulus
-    psth = np.sum(spikes.reshape(nframes, upsample), axis=1)
-    return np.dot(stim_design.T, psth) / np.sum(psth)
+    psth = np.sum(spikes.reshape(nframes, ntrials, -1), axis=(1, 2))
+    return np.dot(stim_design.T, psth) / psth.sum()
 
 
 def subspace(rf1, rf2):
@@ -142,7 +146,10 @@ def to_basis(v, basis):
 
 def from_basis(v, basis):
     """Calculate projection of filter v from basis to unit vector space"""
-    return np.dot(basis, v.T).T
+    if np.isscalar(basis):
+        return v
+    else:
+        return np.dot(basis, v.T).T
 
 
 def factorize(k, rank=1, thresh=None):

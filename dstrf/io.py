@@ -50,7 +50,6 @@ def load_stimulus(path, window, step, f_min=0.5, f_max=8.0, f_count=30,
     import ewave
     fp = ewave.open(path, "r")
     Fs = fp.sampling_rate / 1000.
-    duration = fp.nframes / Fs
     osc = fp.read()
     if gammatone:
         import gammatone.gtgram as gg
@@ -72,7 +71,7 @@ def load_stimulus(path, window, step, f_min=0.5, f_max=8.0, f_count=30,
         Pxx = Pxx[ind, :]
     if compress is not None:
         Pxx = np.log10(Pxx + compress)
-    return Pxx, duration
+    return Pxx, Pxx.shape[1] * step
 
 
 def merge_data(seq, pad_before, pad_after, dt, fill_value=None):

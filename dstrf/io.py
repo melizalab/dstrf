@@ -74,41 +74,122 @@ def load_stimulus(path, window, step, f_min=0.5, f_max=8.0, f_count=30,
     return Pxx, Pxx.shape[1] * step
 
 
-def merge_data(seq, pad_before, pad_after, dt, fill_value=None):
-    """Merge a sequence of stimuli into a single trial
+def pad_stimuli(data, before, after, fill_value=None):
+    """Pad stimuli and adjust spike times in data
 
-    seq:     a sequence of dicts containing {stim, duration, spikes}
-    pad_before: the duration of silence (units of dt) to insert before each stimulus
-    pad_after: the duration of silence (units of dt) to insert after each stimulus
-    dt:      the duration of each frame in the stimulus
-    fill_value: sets the value of the padding. If None, this is equal to the
-    mean of the first frame of the stimulus.
+    Stimuli are usually preceded and followed by silent periods. This function
+    pads the spectrograms with either by the specified fill_value, or by the
+    average value in the first and last frame (if fill_value is None)
 
-    If the input sequence contains spikes, these are also concatenated. Spikes
-    occurring outside the spacing are dropped.
+    Spike times are adjusted so that they are reference to the start of the
+    padded stimulus, and all spike times outside the padded interval are
+    dropped.
 
-    Returns a single dict with {stim, duration, spikes}
+    - data: a sequence of dictionaries, which must contain 'spikes', 'stim' and
+      'stim_dt' fields. This is modified in place
+    - before: interval to pad before stimulus begins (in units of stim_dt)
+    - after: interval to pad after stimulus ends
+
+    NB: this needs to be run BEFORE preprocess_spikes as it will not touch
+    spike_v or spike_h.
 
     """
-    n_before = int(pad_before / dt)
-    n_after = int(pad_after / dt)
-    padded_stims = []
-    clipped_spikes = []
-    duration = 0
-    for i, d in enumerate(seq):
+    import toelis as tl
+    for d in data:
+        dt = d["stim_dt"]
+        n_before = int(before / dt)
+        n_after = int(after / dt)
+
         s = d["stim"]
         nf, nt = s.shape
         fv_before = s[:, 0].mean() if fill_value is None else fill_value
         p_before = fv_before * np.ones((nf, n_before), dtype=s.dtype)
         fv_after = s[:, -1].mean() if fill_value is None else fill_value
         p_after = fv_after * np.ones((nf, n_after), dtype=s.dtype)
-        padded_stims.extend((p_before, s, p_after))
 
-        duration += pad_before
-        newtl = tl.offset(tl.subrange(d["spikes"], -pad_before, d["duration"] + pad_after), -duration)
-        clipped_spikes.append(tuple(newtl))
-        duration += (d["duration"] + pad_after)
+        d["stim"] = np.c_[p_before, s, p_after]
 
-    return {"stim": np.concatenate(padded_stims, axis=1),
-            "spikes": list(tl.merge(*clipped_spikes)),
-            "duration": duration}
+        newtl = tl.offset(tl.subrange(d["spikes"], -before, d["duration"] + after), -before)
+        d["spikes"] = tuple(newtl)
+        d["duration"] += before + after
+    return data
+
+
+def preprocess_spikes(data, dt, sphist_taus):
+
+    """Preprocess spike times in data
+
+    Spike times are binned into intervals of duration dt. The times are
+    then convolved with exponential kernels with amplitude 1.0 and time
+    constants specified in sphist_taus. It's necessary to do this before merging
+    stimuli to avoid having spike history carry over between stimuli (i.e., we
+    should not assume that trial 1 on stimulus 1 immediately preceded trial 1 on
+    stimulus 2).
+
+    - data: a sequence of dictionaries, which must contain 'spikes', 'stim' and
+      'stim_dt' fields.
+    - dt: the duration of the step size for the model (same units as spike times)
+    - sphist_taus: a sequence of time constants (same units as spike times)
+
+    The following fields are added in place to the dictionaries in data:
+
+    - spike_v: a 2-D binary array (bins, trials) giving the number of
+      spikes in each bin
+    - spike_h: a 3-D double array (bins, trials, taus) with the convolution
+      of spike_v and exp(-t/tau)
+    - spike_dt: the sampling interval
+
+    """
+    from mat_neuron._model import adaptation
+    ntaus = len(sphist_taus)
+    for d in data:
+        ntrials = len(d["spikes"])
+        nchan, nframes = d["stim"].shape
+        nbins = nframes * int(d["stim_dt"] / dt)
+        spike_v = np.zeros((nbins, ntrials), dtype='i')
+        spike_h = np.zeros((nbins, ntrials, ntaus), dtype='d')
+        for i, trial in enumerate(d["spikes"]):
+            idx = (trial / dt).astype('i')
+            spike_v[idx, i] = 1
+            spike_h[:, i, :] = adaptation(spike_v[:, i], sphist_taus, dt)
+        d["spike_v"] = spike_v
+        d["spike_h"] = spike_h
+        d["spike_dt"] = dt
+    return data
+
+
+def merge_data(seq):
+    """Merge a sequence of stimuli into a single trial
+
+    Takes a list or tuple of dicts containing {stim, stim_dt, spike_v, spike_h,
+    spike_dt} and concatenates each of {stim, spike_spike_v, spike_h} along the
+    appropriate axis, returning a single dictionary with {stim, stim_dt,
+    spike_v, spike_h, spike_dt}
+
+    """
+    stim_dts = [d["stim_dt"] for d in seq]
+    stim_dt = stim_dts[0]
+    if not np.all(np.equal(stim_dts, stim_dt)):
+        raise ValueError("not all stimuli have the same sampling rate")
+
+    spike_dts = [d["spike_dt"] for d in seq]
+    spike_dt = spike_dts[0]
+    if not np.all(np.equal(spike_dts, spike_dt)):
+        raise ValueError("not all spike vectors have the same sampling rate")
+
+    ntrialss = [d["spike_v"].shape[1] for d in seq]
+    ntrials = ntrialss[0]
+    if not np.all(np.equal(ntrialss, ntrials)):
+        raise ValueError("not all stimuli have the same number of trials")
+
+    spike_v = np.concatenate([d["spike_v"] for d in seq], axis=0)
+    return {
+        "stim_dt": stim_dt,
+        "spike_dt": spike_dt,
+        "ntrials": ntrials,
+        "stim": np.concatenate([d["stim"] for d in seq], axis=1),
+        "spike_v": spike_v,
+        "spike_t": [spk.nonzero()[0] for spk in spike_v.T],
+        "spike_h": np.concatenate([d["spike_h"] for d in seq], axis=0),
+        "duration": sum(d["duration"] for d in seq),
+    }

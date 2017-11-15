@@ -125,6 +125,8 @@ class estimator(object):
         nchan, nframes = stim.shape
         nbins, ntrials = spike_v.shape
 
+        self._spike_dt = spike_dt
+        self._nlin = nlin
         self._spikes = spike_v.astype(self.dtype)
         self._X_stim = lagged_matrix(stim, rf_tau).astype(self.dtype)
         self._X_spike = spike_h.astype(self.dtype)
@@ -163,3 +165,24 @@ class estimator(object):
 
         return op.fmin_ncg(self.loglike, w0, self.gradient, fhess_p=self.hessianv,
                            args=(reg_lambda, reg_alpha), avextol=avextol, maxiter=maxiter, **kwargs)
+
+    def predict(self, w0, tau_params, V=None):
+        """Generate a predicted spike train
+
+        w0 - the estimator's parameters
+        tau_params - the values for t1, t2,...tN and tref (which are not estimated)
+
+        """
+        import mat_neuron._model as mat
+        nbins, hdim, ntrials = self._X_spike.shape
+        omega = w0[0]
+        hvalues = w0[1:(1 + hdim)]
+        tvalues = tau_params[:hdim]
+        tref = tau_params[-1]
+        if self._nlin == "exp":
+            f = mat.predict_poisson
+        elif self._nlin == "softplus":
+            f = mat.predict_softplus
+        if V is None:
+            V = self.V(w0)
+        return f(V - omega, hvalues, tvalues, tref, self._spike_dt, nbins // V.size)

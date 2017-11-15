@@ -135,7 +135,7 @@ def preprocess_spikes(data, dt, sphist_taus):
 
     - spike_v: a 2-D binary array (bins, trials) giving the number of
       spikes in each bin
-    - spike_h: a 3-D double array (bins, trials, taus) with the convolution
+    - spike_h: a 3-D double array (bins, taus, trials) with the convolution
       of spike_v and exp(-t/tau)
     - spike_dt: the sampling interval
 
@@ -147,11 +147,11 @@ def preprocess_spikes(data, dt, sphist_taus):
         nchan, nframes = d["stim"].shape
         nbins = nframes * int(d["stim_dt"] / dt)
         spike_v = np.zeros((nbins, ntrials), dtype='i')
-        spike_h = np.zeros((nbins, ntrials, ntaus), dtype='d')
+        spike_h = np.zeros((nbins, ntaus, ntrials), dtype='d')
         for i, trial in enumerate(d["spikes"]):
             idx = (trial / dt).astype('i')
             spike_v[idx, i] = 1
-            spike_h[:, i, :] = adaptation(spike_v[:, i], sphist_taus, dt)
+            spike_h[:, :, i] = adaptation(spike_v[:, i], sphist_taus, dt)
         d["spike_v"] = spike_v
         d["spike_h"] = spike_h
         d["spike_dt"] = dt
@@ -167,6 +167,7 @@ def merge_data(seq):
     spike_v, spike_h, spike_dt}
 
     """
+    import scipy.sparse as sps
     stim_dts = [d["stim_dt"] for d in seq]
     stim_dt = stim_dts[0]
     if not np.all(np.equal(stim_dts, stim_dt)):

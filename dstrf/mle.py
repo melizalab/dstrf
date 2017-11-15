@@ -101,9 +101,9 @@ class estimator(object):
     """Compute max-likelihood estimate of the MAT model parameters
 
     stim: stimulus, dimensions (nchannels, nframes)
-    spikes: spike response, dimensions (nbins,)
     rf_tau: number of time lags in the kernel OR a set of temporal basis functions
-    alpha_taus: the tau values for the adaptation kernel
+    spike_v: spike response, dimensions (nbins, [ntrials])
+    spike_h: spike history (i.e. spike_v convolved with basis kernels), dim (nbins, nbasis, [ntrials])
     stim_dt: sampling rate of stimulus frames
     spike_dt: sampling rate of spike bins
 
@@ -111,25 +111,23 @@ class estimator(object):
     dimensions (nbins, ntrials)
 
     """
-    def __init__(self, stim, spikes, n_rf_tau, alpha_taus, stim_dt, spike_dt, nlin="exp"):
+    def __init__(self, stim, rf_tau, spike_v, spike_h, stim_dt, spike_dt, nlin="exp"):
         from theano import config
-        from mat_neuron._model import adaptation
         from dstrf.strf import lagged_matrix
         self.dtype = config.floatX
 
         if stim.ndim == 1:
             stim = np.expand_dims(stim, 0)
-        if spikes.ndim == 1:
-            spikes = np.expand_dims(spikes, 1)
+        if spike_v.ndim == 1:
+            spike_v = np.expand_dims(spike_v, 1)
+        if spike_h.ndim == 2:
+            spike_v = np.expand_dims(spike_v, 2)
         nchan, nframes = stim.shape
-        nbins, ntrials = spikes.shape
-        self.n_spk_tau = len(alpha_taus)
+        nbins, ntrials = spike_v.shape
 
-        self._spikes = spikes.astype(self.dtype)
-        self._X_stim = lagged_matrix(stim, n_rf_tau).astype(self.dtype)
-        self._X_spike = np.zeros((nbins, self.n_spk_tau, ntrials), dtype=self.dtype)
-        for i in range(ntrials):
-            self._X_spike[:, :, i] = adaptation(spikes[:, i], alpha_taus, spike_dt)
+        self._spikes = spike_v.astype(self.dtype)
+        self._X_stim = lagged_matrix(stim, rf_tau).astype(self.dtype)
+        self._X_spike = spike_h.astype(self.dtype)
 
         lfuns = make_likelihood(self._X_stim, self._X_spike, self._spikes, stim_dt, spike_dt, nlin)
         for k in ("V", "V_interp", "lci", "loglike", "gradient", "hessianv"):
@@ -149,27 +147,19 @@ class estimator(object):
     def estimate(self, w0=None, reg_lambda=0, reg_alpha=0, avextol=1e-6, maxiter=300, **kwargs):
         """Compute max-likelihood estimate of the model parameters
 
-        w0: initial guess at parameters. If not supplied (default), use STA
+        w0: initial guess at parameters. If not supplied (default), sets omega
+        to the mean firing rate and all other parameters to zero.
 
         Additional arguments are passed to scipy.optimize.fmin_ncg
+
         """
         import scipy.optimize as op
         if w0 is None:
-            # we need to make sure that the initial guess is reasonably good, or
-            # else the Hessian is unstable. This can happen when the stimulus is
-            # not gaussian. The hacky solution is to calculate the STA on a
-            # centered/scaled design matrix, and then rescale the STA so that
-            # V never gets above ~100
-            # sta = self.sta(center=True, scale=True)
-            # w0 = np.r_[0, np.zeros(self.n_spk_tau, dtype=self.dtype), sta]
-            # Vmax = self.V(w0).max()
-            # if Vmax > 100:
-            #     w0[3:] *= 90 / Vmax
-            dim = self._X_stim.shape[1]
-            nbins = self._spikes.shape[0]
+            kdim = self._X_stim.shape[1]
+            nbins, hdim, ntrials = self._X_spike.shape
             meanrate = self._spikes.sum(0).mean() / nbins
             w0 = np.r_[np.exp(meanrate),
-                       np.zeros(self.n_spk_tau + dim)].astype(self.dtype)
+                       np.zeros(hdim + kdim)].astype(self.dtype)
 
         return op.fmin_ncg(self.loglike, w0, self.gradient, fhess_p=self.hessianv,
                            args=(reg_lambda, reg_alpha), avextol=avextol, maxiter=maxiter, **kwargs)

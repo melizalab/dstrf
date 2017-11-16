@@ -6,92 +6,6 @@ from __future__ import print_function, division, absolute_import
 import numpy as np
 
 
-def make_likelihood(stim_design, spike_design, spikes, stim_dt, spike_dt, nlin="exp"):
-    """Generate functions for evaluating negative log-likelihood of model
-
-    stim_design: design matrix for the stimulus (nframes x nk x ntrials)
-    spike_design: design matrix for the spike history terms (nbins x nα x ntrials)
-    spikes: spike array, dimension (nbins x ntrials)
-    stim_dt: sampling rate of stimulus frames
-    spike_dt: sampling rate of spike bins
-    nlin: the nonlinearity. Allowed values: "exp" (default), "softplus", "sigmoid"
-
-    Returns a dictionary with several functions (lci = log conditional
-    intensity, loglike = negative log likelihood, gradient, hessian) and shared
-    variables (X_stim, X_stim, spikes). The functions take a single argument,
-    the parameters as a vector. The ordering of the parameters is as follows: ω,
-    α1 ... αN, k1 ... kN. The shared variables can be used to alter the design
-    matrices in place, but it's often simpler just to call this function again.
-
-    The functions returned take two optional arguments, λ and α, which control
-    the L2 and L1 penalties.
-
-    """
-    from theano import function, config, shared, sparse, In
-    from theano.tensor import nnet
-    import theano.tensor as T
-    import scipy.sparse as sps
-
-    nframes, nk = stim_design.shape
-    nbins, nalpha, ntrials = spike_design.shape
-    upsample = int(stim_dt / spike_dt)
-    if upsample != (nbins // nframes):
-        raise ValueError("size of design matrices does not match sampling rates")
-    if spikes.shape != (nbins, ntrials):
-        raise ValueError("size of spikes matrix does not design matrix")
-    # make an interpolation matrix
-    interp = sps.kron(sps.eye(nframes),
-                      np.ones((upsample, 1), dtype=config.floatX),
-                      format='csc')
-
-    M = shared(interp)
-    dt = shared(spike_dt)
-    Xstim = shared(stim_design)
-    Xspke = shared(spike_design)
-    Yspke = shared(spikes)
-
-    # regularization parameters
-    reg_lambda = T.scalar('lambda')
-    reg_alpha = T.scalar('alpha')
-    # split out the parameter vector
-    w = T.vector('w')
-    dc = w[0]
-    h = w[1:(nalpha + 1)]
-    k = w[(nalpha + 1):]
-    # elastic net penalty
-    penalty = reg_lambda * T.dot(k, k) + reg_alpha * T.sqrt(T.dot(k, k) + 0.001)
-    # Vx has to be promoted to a matrix for structured_dot to work
-    Vx = T.dot(Xstim, k)
-    Vi = sparse.structured_dot(M, T.shape_padright(Vx))
-    H = T.dot(Xspke.dimshuffle([2, 0, 1]), h).T
-    mu = Vi - H - dc
-    if nlin == "exp":
-        lmb = T.exp(mu)
-    elif nlin == "softplus":
-        lmb = nnet.softplus(mu)
-    elif nlin == "sigmoid":
-        lmb = nnet.sigmoid(mu)
-    else:
-        raise ValueError("unknown nonlinearity type: {}".format(nlin))
-    # this version of the log-likelihood is faster, but the gradient doesn't work
-    llf = lmb.sum() * dt - sparse.sp_sum(sparse.structured_log(Yspke * lmb), sparse_grad=True)
-    # this version has a working gradient
-    ll = lmb.sum() * dt - sparse.sp_sum(Yspke * T.log(lmb), sparse_grad=True)
-    dL = T.grad(ll, w)
-    v = T.vector('v')
-    ddLv = T.grad(T.sum(dL * v), w)
-
-    loglike = function([w, In(reg_lambda, value=0.), In(reg_alpha, value=0.)], llf)
-    gradient = function([w, In(reg_lambda, value=0.), In(reg_alpha, value=0.)], dL)
-    hessianv = function([w, v, In(reg_lambda, value=0.), In(reg_alpha, value=0.)], ddLv)
-    return {"V": function([w], Vx),
-            "V_interp": function([w], Vi),
-            "lci": function([w], mu),
-            "loglike": loglike,
-            "gradient": gradient,
-            "hessianv": hessianv}
-
-
 class estimator(object):
     """Compute max-likelihood estimate of the MAT model parameters
 
@@ -101,6 +15,8 @@ class estimator(object):
     spike_h: spike history (i.e. spike_v convolved with basis kernels), dim (nbins, nbasis, [ntrials])
     stim_dt: sampling rate of stimulus frames
     spike_dt: sampling rate of spike bins
+    nlin: the nonlinearity. Allowed values: "exp" (default), "softplus", "sigmoid"
+
 
     If there are multiple trials for a given stimulus, then spikes must have
     dimensions (nbins, ntrials)
@@ -117,19 +33,80 @@ class estimator(object):
         if spike_v.ndim == 1:
             spike_v = np.expand_dims(spike_v, 1)
         if spike_h.ndim == 2:
-            spike_v = np.expand_dims(spike_v, 2)
-        nchan, nframes = stim.shape
-        nbins, ntrials = spike_v.shape
+            spike_h = np.expand_dims(spike_h, 2)
+
+        nfeat, nframes = stim.shape
+        nbins, ntau, ntrials = spike_h.shape
+        upsample = int(stim_dt / spike_dt)
+        if upsample != (nbins // nframes):
+            raise ValueError("size of design matrices does not match sampling rates")
+        if spike_v.shape != (nbins, ntrials):
+            raise ValueError("size of spikes matrix does not design matrix")
 
         self._spike_dt = spike_dt
         self._nlin = nlin
         self._spikes = sps.csc_matrix(spike_v)
         self._X_stim = lagged_matrix(stim, rf_tau).astype(self.dtype)
         self._X_spike = spike_h.astype(self.dtype)
+        self._interp = sps.kron(sps.eye(nframes),
+                                np.ones((upsample, 1), dtype=config.floatX),
+                                format='csc')
+        self._make_functions()
 
-        lfuns = make_likelihood(self._X_stim, self._X_spike, self._spikes, stim_dt, spike_dt, nlin)
-        for k in ("V", "V_interp", "lci", "loglike", "gradient", "hessianv"):
-            setattr(self, k, lfuns[k])
+    def _nlin_theano(self, mu):
+        import theano.tensor as T
+        from theano.tensor import nnet
+        if self._nlin == "exp":
+            return T.exp(mu)
+        elif self._nlin == "softplus":
+            return nnet.softplus(mu)
+        elif self._nlin == "sigmoid":
+            return nnet.sigmoid(mu)
+        else:
+            raise ValueError("unknown nonlinearity type: {}".format(self._nlin))
+
+    def _make_functions(self):
+        """Generate the theano graph"""
+        from theano import function, shared, sparse, In
+        import theano.tensor as T
+
+        nalpha = self._X_spike.shape[1]
+        M = shared(self._interp)
+        dt = shared(self._spike_dt)
+        Xstim = shared(self._X_stim)
+        Xspke = shared(self._X_spike)
+        Yspke = shared(self._spikes)
+
+        # regularization parameters
+        reg_lambda = T.scalar('lambda')
+        reg_alpha = T.scalar('alpha')
+        # split out the parameter vector
+        w = T.vector('w')
+        dc = w[0]
+        h = w[1:(nalpha + 1)]
+        k = w[(nalpha + 1):]
+        # elastic net penalty
+        penalty = reg_lambda * T.dot(k, k) + reg_alpha * T.sqrt(T.dot(k, k) + 0.001)
+        # Vx has to be promoted to a matrix for structured_dot to work
+        Vx = T.dot(Xstim, k)
+        Vi = sparse.structured_dot(M, T.shape_padright(Vx))
+        H = T.dot(Xspke.dimshuffle([2, 0, 1]), h).T
+        mu = Vi - H - dc
+        lmb = self._nlin_theano(mu)
+        # this version of the log-likelihood is faster, but the gradient doesn't work
+        llf = lmb.sum() * dt - sparse.sp_sum(sparse.structured_log(Yspke * lmb), sparse_grad=True) + penalty
+        # this version has a working gradient
+        ll = lmb.sum() * dt - sparse.sp_sum(Yspke * T.log(lmb), sparse_grad=True) + penalty
+        dL = T.grad(ll, w)
+        v = T.vector('v')
+        ddLv = T.grad(T.sum(dL * v), w)
+
+        self.V = function([w], Vx)
+        self.V_interp = function([w], Vi)
+        self.lci = function([w], mu)
+        self.loglike = function([w, In(reg_lambda, value=0.), In(reg_alpha, value=0.)], llf)
+        self.gradient = function([w, In(reg_lambda, value=0.), In(reg_alpha, value=0.)], dL)
+        self.hessianv = function([w, v, In(reg_lambda, value=0.), In(reg_alpha, value=0.)], ddLv)
 
     def sta(self, center=False, scale=False):
         """Calculate the spike-triggered average"""

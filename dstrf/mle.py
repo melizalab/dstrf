@@ -9,15 +9,12 @@ import numpy as np
 def make_likelihood(stim_design, spike_design, spikes, stim_dt, spike_dt, nlin="exp"):
     """Generate functions for evaluating negative log-likelihood of model
 
-    stim_design: design matrix for the stimulus (nframes x nk)
-    spike_design: design matrix for the spike history terms (nbins x nα)
-    spikes: spike array, dimension (nbins,)
+    stim_design: design matrix for the stimulus (nframes x nk x ntrials)
+    spike_design: design matrix for the spike history terms (nbins x nα x ntrials)
+    spikes: spike array, dimension (nbins x ntrials)
     stim_dt: sampling rate of stimulus frames
     spike_dt: sampling rate of spike bins
     nlin: the nonlinearity. Allowed values: "exp" (default), "softplus", "sigmoid"
-
-    If there are multiple trials for a given stimulus, then spike_design becomes
-    (nbins, nα, ntrials) and spikes becomes (nbins, ntrials)
 
     Returns a dictionary with several functions (lci = log conditional
     intensity, loglike = negative log likelihood, gradient, hessian) and shared
@@ -35,11 +32,6 @@ def make_likelihood(stim_design, spike_design, spikes, stim_dt, spike_dt, nlin="
     import theano.tensor as T
     import scipy.sparse as sps
 
-    if spike_design.ndim == 2:
-        spike_design = np.expand_dims(spike_design, 2)
-    if spikes.ndim == 1:
-        spikes = np.expand_dims(spikes, 1)
-
     nframes, nk = stim_design.shape
     nbins, nalpha, ntrials = spike_design.shape
     upsample = int(stim_dt / spike_dt)
@@ -56,7 +48,7 @@ def make_likelihood(stim_design, spike_design, spikes, stim_dt, spike_dt, nlin="
     dt = shared(spike_dt)
     Xstim = shared(stim_design)
     Xspke = shared(spike_design)
-    spkx, spky = map(shared, spikes.nonzero())
+    Yspke = shared(spikes)
 
     # regularization parameters
     reg_lambda = T.scalar('lambda')
@@ -81,12 +73,15 @@ def make_likelihood(stim_design, spike_design, spikes, stim_dt, spike_dt, nlin="
         lmb = nnet.sigmoid(mu)
     else:
         raise ValueError("unknown nonlinearity type: {}".format(nlin))
-    ll = lmb.sum() * dt - T.log(lmb[spkx, spky]).sum() + penalty
+    # this version of the log-likelihood is faster, but the gradient doesn't work
+    llf = lmb.sum() * dt - sparse.sp_sum(sparse.structured_log(Yspke * lmb), sparse_grad=True)
+    # this version has a working gradient
+    ll = lmb.sum() * dt - sparse.sp_sum(Yspke * T.log(lmb), sparse_grad=True)
     dL = T.grad(ll, w)
     v = T.vector('v')
     ddLv = T.grad(T.sum(dL * v), w)
 
-    loglike = function([w, In(reg_lambda, value=0.), In(reg_alpha, value=0.)], ll)
+    loglike = function([w, In(reg_lambda, value=0.), In(reg_alpha, value=0.)], llf)
     gradient = function([w, In(reg_lambda, value=0.), In(reg_alpha, value=0.)], dL)
     hessianv = function([w, v, In(reg_lambda, value=0.), In(reg_alpha, value=0.)], ddLv)
     return {"V": function([w], Vx),
@@ -113,6 +108,7 @@ class estimator(object):
     """
     def __init__(self, stim, rf_tau, spike_v, spike_h, stim_dt, spike_dt, nlin="exp"):
         from theano import config
+        import scipy.sparse as sps
         from dstrf.strf import lagged_matrix
         self.dtype = config.floatX
 
@@ -127,7 +123,7 @@ class estimator(object):
 
         self._spike_dt = spike_dt
         self._nlin = nlin
-        self._spikes = spike_v.astype(self.dtype)
+        self._spikes = sps.csc_matrix(spike_v)
         self._X_stim = lagged_matrix(stim, rf_tau).astype(self.dtype)
         self._X_spike = spike_h.astype(self.dtype)
 
@@ -138,7 +134,7 @@ class estimator(object):
     def sta(self, center=False, scale=False):
         """Calculate the spike-triggered average"""
         from dstrf.strf import correlate
-        spikes = self._spikes
+        spikes = self._spikes.toarray()
         X = self._X_stim.copy()
         if center:
             X -= X.mean(0)

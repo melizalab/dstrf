@@ -16,7 +16,7 @@ def corrcoef(a, b, downsample=None, smooth=None):
     smooth:     if not None, smooth the downsampled PSTHs
 
     """
-    from spikes import psth
+    from dstrf.spikes import psth
     p1 = psth(a, downsample, smooth)
     p2 = psth(b, downsample, smooth)
     return np.corrcoef(p1, p2)[0][1]

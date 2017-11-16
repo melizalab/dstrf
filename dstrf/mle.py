@@ -5,7 +5,6 @@ from __future__ import print_function, division, absolute_import
 
 import numpy as np
 
-
 class estimator(object):
     """Compute max-likelihood estimate of the MAT model parameters
 
@@ -51,7 +50,16 @@ class estimator(object):
         self._interp = sps.kron(sps.eye(nframes),
                                 np.ones((upsample, 1), dtype=config.floatX),
                                 format='csc')
+        self.select_data()
         self._make_functions()
+
+    @property
+    def X_stim(self):
+        return self._X_stim
+
+    @property
+    def X_spike(self):
+        return self._X_spike
 
     def _nlin_theano(self, mu):
         import theano.tensor as T
@@ -67,15 +75,10 @@ class estimator(object):
 
     def _make_functions(self):
         """Generate the theano graph"""
-        from theano import function, shared, sparse, In
+        from theano import function, sparse, In
         import theano.tensor as T
 
         nalpha = self._X_spike.shape[1]
-        M = shared(self._interp)
-        dt = shared(self._spike_dt)
-        Xstim = shared(self._X_stim)
-        Xspke = shared(self._X_spike)
-        Yspke = shared(self._spikes)
 
         # regularization parameters
         reg_lambda = T.scalar('lambda')
@@ -88,15 +91,15 @@ class estimator(object):
         # elastic net penalty
         penalty = reg_lambda * T.dot(k, k) + reg_alpha * T.sqrt(T.dot(k, k) + 0.001)
         # Vx has to be promoted to a matrix for structured_dot to work
-        Vx = T.dot(Xstim, k)
-        Vi = sparse.structured_dot(M, T.shape_padright(Vx))
-        H = T.dot(Xspke.dimshuffle([2, 0, 1]), h).T
+        Vx = T.dot(self._sh_X_stim, k)
+        Vi = sparse.structured_dot(self._sh_interp, T.shape_padright(Vx))
+        H = T.dot(self._sh_X_spike.dimshuffle([2, 0, 1]), h).T
         mu = Vi - H - dc
         lmb = self._nlin_theano(mu)
         # this version of the log-likelihood is faster, but the gradient doesn't work
-        llf = lmb.sum() * dt - sparse.sp_sum(sparse.structured_log(Yspke * lmb), sparse_grad=True) + penalty
+        llf = lmb.sum() * self._spike_dt - sparse.sp_sum(sparse.structured_log(self._sh_Y_spike * lmb), sparse_grad=True) + penalty
         # this version has a working gradient
-        ll = lmb.sum() * dt - sparse.sp_sum(Yspke * T.log(lmb), sparse_grad=True) + penalty
+        ll = lmb.sum() * self._spike_dt - sparse.sp_sum(self._sh_Y_spike * T.log(lmb), sparse_grad=True) + penalty
         dL = T.grad(ll, w)
         v = T.vector('v')
         ddLv = T.grad(T.sum(dL * v), w)
@@ -108,7 +111,29 @@ class estimator(object):
         self.gradient = function([w, In(reg_lambda, value=0.), In(reg_alpha, value=0.)], dL)
         self.hessianv = function([w, v, In(reg_lambda, value=0.), In(reg_alpha, value=0.)], ddLv)
 
+    def select_data(self, fselect=None, bselect=None):
+        """Updates the shared variables containing the data to be fit
+
+        Default behavior is to populate the shared variables with the data
+        provided to the constructor. However, if fselect (selecting frames) and
+        bselect (selecting bins) are specified, then only a subset of data is
+        used. This is useful for cross-validation.
+
+        """
+        from theano import shared
+        if fselect is None or bselect is None:
+            self._sh_interp = shared(self._interp)
+            self._sh_X_stim = shared(self._X_stim)
+            self._sh_X_spike = shared(self._X_spike)
+            self._sh_Y_spike = shared(self._spikes)
+        else:
+            self._sh_interp.set_value(self._interp[bselect][:, fselect])
+            self._sh_X_stim.set_value(self._X_stim[fselect])
+            self._sh_X_spike.set_value(self._X_spike[bselect])
+            self._sh_Y_spike.set_value(self._spikes[bselect])
+
     def sta(self, center=False, scale=False):
+
         """Calculate the spike-triggered average"""
         from dstrf.strf import correlate
         spikes = self._spikes.toarray()
@@ -120,6 +145,7 @@ class estimator(object):
         return correlate(X, spikes)
 
     def estimate(self, w0=None, reg_lambda=0, reg_alpha=0, avextol=1e-6, maxiter=300, **kwargs):
+
         """Compute max-likelihood estimate of the model parameters
 
         w0: initial guess at parameters. If not supplied (default), sets omega
@@ -142,8 +168,9 @@ class estimator(object):
     def predict(self, w0, tau_params, V=None):
         """Generate a predicted spike train
 
-        w0 - the estimator's parameters
-        tau_params - the values for t1, t2,...tN and tref (which are not estimated)
+        w0: the estimator's parameters
+        tau_params: - the values for t1, t2,...tN and tref (which are not estimated)
+        V:  if specified, skips calculating the convolution of the stim with the kernel
 
         """
         import mat_neuron._model as mat

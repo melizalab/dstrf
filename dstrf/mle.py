@@ -2,8 +2,8 @@
 # -*- mode: python -*-
 """Functions for ML estimation of MAT parameters"""
 from __future__ import print_function, division, absolute_import
-
 import numpy as np
+
 
 class estimator(object):
     """Compute max-likelihood estimate of the MAT model parameters
@@ -165,7 +165,7 @@ class estimator(object):
         return op.fmin_ncg(self.loglike, w0, self.gradient, fhess_p=self.hessianv,
                            args=(reg_lambda, reg_alpha), avextol=avextol, maxiter=maxiter, **kwargs)
 
-    def predict(self, w0, tau_params, V=None):
+    def predict(self, w0, tau_params, V=None, random_state=None):
         """Generate a predicted spike train
 
         w0: the estimator's parameters
@@ -174,6 +174,8 @@ class estimator(object):
 
         """
         import mat_neuron._model as mat
+        if random_state is not None:
+            mat.random_seed(random_state)
         nbins, hdim, ntrials = self._X_spike.shape
         omega = w0[0]
         hvalues = w0[1:(1 + hdim)]

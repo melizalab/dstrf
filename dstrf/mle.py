@@ -5,7 +5,7 @@ from __future__ import print_function, division, absolute_import
 import numpy as np
 
 
-class estimator(object):
+class mat(object):
     """Compute max-likelihood estimate of the MAT model parameters
 
     stim: stimulus, dimensions (nchannels, nframes)
@@ -15,7 +15,6 @@ class estimator(object):
     stim_dt: sampling rate of stimulus frames
     spike_dt: sampling rate of spike bins
     nlin: the nonlinearity. Allowed values: "exp" (default), "softplus", "sigmoid"
-
 
     If there are multiple trials for a given stimulus, then spikes must have
     dimensions (nbins, ntrials)
@@ -34,7 +33,7 @@ class estimator(object):
         if spike_h.ndim == 2:
             spike_h = np.expand_dims(spike_h, 2)
 
-        nfeat, nframes = stim.shape
+        self._nchannels, nframes = stim.shape
         nbins, ntau, ntrials = spike_h.shape
         upsample = int(stim_dt / spike_dt)
         if upsample != (nbins // nframes):
@@ -133,7 +132,6 @@ class estimator(object):
             self._sh_Y_spike.set_value(self._spikes[bselect])
 
     def sta(self, center=False, scale=False):
-
         """Calculate the spike-triggered average"""
         from dstrf.strf import correlate
         spikes = self._spikes.toarray()
@@ -143,6 +141,15 @@ class estimator(object):
         if scale:
             X /= X.std(0)
         return correlate(X, spikes)
+
+    def param0(self):
+        """Returns a parameter vector with a good starting guess"""
+        kdim = self._X_stim.shape[1]
+        nbins, hdim, ntrials = self._X_spike.shape
+        meanrate = self._spikes.sum(0).mean() / nbins
+        return np.r_[np.exp(meanrate),
+                     np.zeros(hdim + kdim)].astype(self.dtype)
+
 
     def estimate(self, w0=None, reg_lambda=0, reg_alpha=0, avextol=1e-6, maxiter=300, **kwargs):
 
@@ -156,11 +163,7 @@ class estimator(object):
         """
         import scipy.optimize as op
         if w0 is None:
-            kdim = self._X_stim.shape[1]
-            nbins, hdim, ntrials = self._X_spike.shape
-            meanrate = self._spikes.sum(0).mean() / nbins
-            w0 = np.r_[np.exp(meanrate),
-                       np.zeros(hdim + kdim)].astype(self.dtype)
+            w0 = self.param0()
 
         return op.fmin_ncg(self.loglike, w0, self.gradient, fhess_p=self.hessianv,
                            args=(reg_lambda, reg_alpha), avextol=avextol, maxiter=maxiter, **kwargs)
@@ -188,3 +191,88 @@ class estimator(object):
         if V is None:
             V = self.V(w0)
         return f(V - omega, hvalues, tvalues, tref, self._spike_dt, nbins // V.size)
+
+
+class matfact(mat):
+    """ The MAT dSTRF model, but with factorized (bilinear) kernel
+
+    stim: stimulus, dimensions (nchannels, nframes)
+    rf_tau: number of time lags in the kernel OR a set of temporal basis functions
+    rf_rank: the rank of the factorized rf (1 or 2 is usually good)
+    spike_v: spike response, dimensions (nbins, [ntrials])
+    spike_h: spike history (i.e. spike_v convolved with basis kernels), dim (nbins, nbasis, [ntrials])
+    stim_dt: sampling rate of stimulus frames
+    spike_dt: sampling rate of spike bins
+    nlin: the nonlinearity. Allowed values: "exp" (default), "softplus", "sigmoid"
+
+    If there are multiple trials for a given stimulus, then spikes must have
+    dimensions (nbins, ntrials)
+
+    """
+    def __init__(self, stim, rf_tau, rf_rank, spike_v, spike_h, stim_dt, spike_dt, nlin="exp"):
+        self._rank = rf_rank
+        super(matfact, self).__init__(stim, rf_tau, spike_v, spike_h, stim_dt, spike_dt, nlin)
+
+    def _make_functions(self):
+        """Generate the theano graph"""
+        from theano import function, sparse, In
+        import theano.tensor as T
+
+        nframes, nk = self._X_stim.shape
+        nbins, nalpha, ntrials = self._X_spike.shape
+        nt = nk // self._nchannels
+        nkf = self._nchannels * self._rank
+        nkt = nt * self._rank
+
+        # regularization parameters
+        reg_lambda = T.scalar('lambda')
+        reg_alpha = T.scalar('alpha')
+        # split out the parameter vector
+        w = T.vector('w')
+        dc = w[0]
+        h = w[1:(nalpha + 1)]
+        kf = w[(nalpha + 1):(nalpha + nkf + 1)]
+        kt = w[(nalpha + nkf + 1):(nalpha + nkf + nkt + 1)]
+        k = T.dot(kf.reshape((self._nchannels, self._rank)), kt.reshape((self._rank, nt))).ravel()
+        # elastic net penalty
+        penalty = reg_lambda * T.dot(k, k) + reg_alpha * T.sqrt(T.dot(k, k) + 0.001)
+        # Vx has to be promoted to a matrix for structured_dot to work
+        Vx = T.dot(self._sh_X_stim, k)
+        Vi = sparse.structured_dot(self._sh_interp, T.shape_padright(Vx))
+        H = T.dot(self._sh_X_spike.dimshuffle([2, 0, 1]), h).T
+        mu = Vi - H - dc
+        lmb = self._nlin_theano(mu)
+        # this version of the log-likelihood is faster, but the gradient doesn't work
+        llf = lmb.sum() * self._spike_dt - sparse.sp_sum(sparse.structured_log(self._sh_Y_spike * lmb), sparse_grad=True) + penalty
+        # this version has a working gradient
+        ll = lmb.sum() * self._spike_dt - sparse.sp_sum(self._sh_Y_spike * T.log(lmb), sparse_grad=True) + penalty
+        dL = T.grad(ll, w)
+        v = T.vector('v')
+        ddLv = T.grad(T.sum(dL * v), w)
+
+        self.V = function([w], Vx)
+        self.V_interp = function([w], Vi)
+        self.lci = function([w], mu)
+        self.loglike = function([w, In(reg_lambda, value=0.), In(reg_alpha, value=0.)], llf)
+        self.gradient = function([w, In(reg_lambda, value=0.), In(reg_alpha, value=0.)], dL)
+        self.hessianv = function([w, v, In(reg_lambda, value=0.), In(reg_alpha, value=0.)], ddLv)
+
+    def param0(self, random_seed=10, random_sd=0.1):
+        """Returns a parameter vector with a good starting guess
+
+        For the factorized model, the RF *cannot* be all zeros because of the
+        sign ambiguity in the factorization. So instead we use normally
+        distributed random numbers with a fixed seed.
+
+        """
+        from numpy import random
+        random.seed(random_seed)
+        nframes, nk = self._X_stim.shape
+        nkf = self._nchannels * self._rank
+        nkt = nk // self._nchannels * self._rank
+        kdim = nkt + nkf
+        nbins, hdim, ntrials = self._X_spike.shape
+        meanrate = self._spikes.sum(0).mean() / nbins
+        return np.r_[np.exp(meanrate),
+                     np.zeros(hdim),
+                     random_sd * random.randn(kdim)].astype(self.dtype)

@@ -21,6 +21,6 @@ def psth(spike_v, downsample=None, smooth=None):
     else:
         psth = np.sum(spike_v, axis=1)
     if smooth is not None:
-        return gaussian_filter1d(psth, smooth, mode="constant", cval=0.0)
+        return gaussian_filter1d(psth.astype('d'), smooth, mode="constant", cval=0.0)
     else:
         return psth

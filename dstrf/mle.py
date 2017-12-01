@@ -276,3 +276,8 @@ class matfact(mat):
         return np.r_[np.exp(meanrate),
                      np.zeros(hdim),
                      random_sd * random.randn(kdim)].astype(self.dtype)
+
+    def strf(self, w):
+        """Returns the full-rank RF"""
+        from dstrf.strf import defactorize
+        return defactorize(w[3:], self._nchannels, self._rank)

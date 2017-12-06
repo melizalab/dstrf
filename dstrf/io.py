@@ -31,6 +31,33 @@ def load_crcns(cell, stim_type, root, window, step, **specargs):
     return out
 
 
+def load_rothman(cell, root, window, step, **specargs):
+    """Load stimulus and response data from SNR4synhg
+
+    Additional keyword arguments are passed to load_stimulus()
+    """
+    spikesroot = os.path.join(root, cell)
+    stimroot = os.path.join(root, "stims")
+
+    out = []
+    for fname in glob.iglob(os.path.join(root,cell,"spike*")):
+        stim = "stim{}-0.wav".format(fname[-2:])
+        spec, dur = load_stimulus(os.path.join(stimroot,stim), window, step, **specargs)
+        spikes = []
+        for f in open(fname):
+            l = f.split(" ")
+            if l[0] == "\n": spikes.append(np.empty([0],dtype=float))
+            else: 
+                spikes.append(np.asarray(l,dtype=float))
+        spikes = tuple(spikes)
+        out.append({"cell_name": cell,
+                    "stim_name": stim,
+                    "duration": dur,
+                    "stim": spec,
+                    "stim_dt": step,
+                    "spikes": spikes})
+    return out
+
 def load_stimulus(path, window, step, f_min=0.5, f_max=8.0, f_count=30,
                   compress=1, gammatone=False):
     """Load sound stimulus and calculate spectrotemporal representation.

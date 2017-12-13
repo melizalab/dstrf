@@ -50,7 +50,10 @@ def elasticnet(estimator, n_splits, alphas, l1_ratios=0.5, **kwargs):
     for l1r in l1_ratios:
         for alpha in alphas:
             regargs = (alpha * l1r, alpha * (1 - l1r))
-            w, s = estimate_crossval(estimator, n_splits, regargs, w0=w, **kwargs)
+            try:
+                w, s = estimate_crossval(estimator, n_splits, regargs, w0=w, **kwargs)
+            except:
+                w, s = [[0],-np.inf]
             yield (regargs, s, w)
 
 

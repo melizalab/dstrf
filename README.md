@@ -15,4 +15,4 @@ the MAT model
 
 ## Running jobs on an MPI cluster
 
-- Install openmpi
+This isn't really needed any more.

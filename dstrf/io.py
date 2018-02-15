@@ -5,9 +5,9 @@ from __future__ import print_function, division, absolute_import
 
 import os
 import glob
+import json
 import toelis as tl
 import numpy as np
-
 
 def load_crcns(cell, stim_type, root, window, step, **specargs):
     """Load stimulus and response data from CRCNS repository
@@ -47,7 +47,7 @@ def load_rothman(cell, root, window, step, **specargs):
         for f in open(fname):
             l = f.split(" ")
             if l[0] == "\n": spikes.append(np.empty([0],dtype=float))
-            else: 
+            else:
                 spikes.append(np.asarray(l,dtype=float))
         spikes = tuple(spikes)
         out.append({"cell_name": cell,
@@ -57,6 +57,33 @@ def load_rothman(cell, root, window, step, **specargs):
                     "stim_dt": step,
                     "spikes": spikes})
     return out
+
+
+def load_neurobank(cell, window, step, **specargs):
+    """ Load stimulus file and response data from neurobank repository """
+    import itertools
+    from nbank import find
+    unitfile = next(find(cell, local_only=True))
+    # first load and collate the responses, then load the stimuli
+    out = []
+    with open(unitfile, 'rU') as fp:
+        data = json.load(fp)
+        trials = sorted(data['pprox'], key = lambda x: (x['stimulus'], x['trial']))
+        for stimname, trials in itertools.groupby(trials, lambda x: x['stimulus']):
+            try:
+                stimfile = next(find(stimname, local_only=True))
+            except StopIteration:
+                # no match with stimulus
+                continue
+            spec, dur = load_stimulus(stimfile, window, step, **specargs)
+            out.append({"cell_name": cell,
+                        "stim_name": stimname,
+                        "duration": dur,
+                        "stim": spec,
+                        "stim_dt": step,
+                        "spikes": [np.asarray(p["events"]) * 1000. for p in trials]})
+    return out
+
 
 def load_stimulus(path, window, step, f_min=0.5, f_max=8.0, f_count=30,
                   compress=1, gammatone=False):

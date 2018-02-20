@@ -74,6 +74,12 @@ n_test = int(config["data"]["p_test"] * len(data))
 # split into assimilation and test sets and merge stimuli
 assim_data = io.merge_data(data[:-n_test])
 test_data = io.merge_data(data[-n_test:])
+eo = performance.corrcoef(test_data["spike_v"][:,::2], test_data["spike_v"][:,1::2], upsample, 1)
+
+if eo < 0.2:
+  print("Even/Odd Correlation too low: {:.3f}".format(eo))
+  sys.exit(0)
+
 stim = assim_data["stim"]
 
 
@@ -105,9 +111,9 @@ w0 = mlest.estimate(reg_lambda=1e1, reg_alpha=1e1)
 import progressbar
 from dstrf import crossvalidate
 
-#reg_grid = np.logspace(-1, 5, 50)[::-1]
-l1_ratios = [0.1, 0.5, 0.9] #[0.1, 0.5, 0.7, 0.9, 0.95]
-reg_grid = np.logspace(-1, 5, 20)[::-1]
+l1_ratios = config["crossval"]["l1_ratios"]
+reg_grid = np.logspace(config["crossval"]["logspace_start"], config["crossval"]["logspace_end"], 
+                       config["crossval"]["logspace_steps"])[::-1]
 
 bar = progressbar.ProgressBar(max_value=2 * len(l1_ratios) * len(reg_grid),
                               widgets=[
@@ -153,7 +159,6 @@ pred_psth = spikes.psth(pred, upsample, 1)
 test_psth = spikes.psth(test_data["spike_v"], upsample, 1)
 
 psth_corr = np.corrcoef(test_psth, pred_psth)[0, 1]
-eo = performance.corrcoef(test_data["spike_v"][:,::2], test_data["spike_v"][:,1::2], upsample, 1)
 print("elastic net penalized maximum likelihood:")
 print("loglike: {:.3f}".format(-mltest.loglike(w0)))
 print("CC: {:.3f} / {:.3f} ({:.3f})".format(psth_corr, eo, psth_corr/eo))

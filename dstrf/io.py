@@ -40,7 +40,7 @@ def load_rothman(cell, root, window, step, **specargs):
     stimroot = os.path.join(root, "stims")
 
     out = []
-    for fname in glob.iglob(os.path.join(root,cell,"spike*")):
+    for fname in sorted(glob.iglob(os.path.join(root,cell,"spike*"))):
         stim = "stim{}-0.wav".format(fname[-2:])
         spec, dur = load_stimulus(os.path.join(stimroot,stim), window, step, **specargs)
         spikes = []
@@ -104,7 +104,7 @@ def load_stimulus(path, window, step, f_min=0.5, f_max=8.0, f_count=30,
     import ewave
     fp = ewave.open(path, "r")
     Fs = fp.sampling_rate / 1000.
-    osc = fp.read()
+    osc = ewave.rescale(fp.read(), 'h')
     if gammatone:
         import gammatone.gtgram as gg
         Pxx = gg.gtgram(osc, Fs * 1000, window / 1000, step / 1000, f_count, f_min * 1000, f_max * 1000)

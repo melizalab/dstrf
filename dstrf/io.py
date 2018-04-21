@@ -45,10 +45,8 @@ def load_rothman(cell, root, window, step, **specargs):
         spec, dur = load_stimulus(os.path.join(stimroot,stim), window, step, **specargs)
         spikes = []
         for f in open(fname):
-            l = f.split(" ")
-            if l[0] == "\n": spikes.append(np.empty([0],dtype=float))
-            else:
-                spikes.append(np.asarray(l,dtype=float))
+            l = f.strip().split()
+            spikes.append(np.asarray(l,dtype='d'))
         spikes = tuple(spikes)
         out.append({"cell_name": cell,
                     "stim_name": stim,
@@ -114,8 +112,9 @@ def load_stimulus(path, window, step, f_min=0.5, f_max=8.0, f_count=30,
         nfft = int(f_count / (f_max - f_min) * Fs)
         npoints = int(Fs * window)
         if nfft < npoints:
-            raise ValueError("window size {} ({} points) too small "
-                             "for desired freq resolution".format(window, npoints))
+            raise ValueError("window size {} ({} points) too large for desired freq resolution {}. "
+                             "Decrease to {} ms or increase f_count.".format(window, f_count,
+                                                                             npoints, nfft / Fs))
 
         nstep = int(Fs * step)
         taper = np.hanning(npoints)

@@ -13,6 +13,7 @@ emcee:
   nsteps: 2000
   nthreads: 8
   nwalkers: 500
+  startpos_scale: 1.0
 mat:
   bounds:
   - [0, 20]
@@ -24,11 +25,11 @@ mat:
   taus: [10.0, 200.0]
 strf:
   f_max: 8.0
-  f_min: 1.0
-  gammatone: true
+  f_min: 0.0
+  gammatone: False
   nfreq: 20
   ntau: 40
   ntbas: 10
   spec_compress: 10
-  spec_window: 4.0
+  spec_window: 2.5
   stim_dt: 3.0

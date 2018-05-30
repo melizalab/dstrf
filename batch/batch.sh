@@ -19,7 +19,7 @@ do
 	TAG=$(date '+%F-%H%M')
 	cp $PYSCRIPT $DIR/$CELL\_$TAG.py
 
-	OMP_NUM_THREADS=1 python3 $DIR/$CELL\_$TAG.py $CELL $YAML $DIR $TAG > $DIR/$CELL\_$TAG.log
+	krenew -K 10 OMP_NUM_THREADS=1 python3 $DIR/$CELL\_$TAG.py $CELL $YAML $DIR $TAG > $DIR/$CELL\_$TAG.log
 
 	echo -n $$ DONE ' ' ; date "+%F %T"
 done < $CELLS 

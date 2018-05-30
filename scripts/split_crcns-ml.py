@@ -22,6 +22,7 @@ import os
 import sys
 import imp
 import numpy as np
+import time
 
 import yaml
 import pickle
@@ -33,7 +34,7 @@ yfile = sys.argv[2]
 saveplace = sys.argv[3]
 tag = sys.argv[4]
 
-interfile = saveplace + cell + "_" + tag + "-ml.dat" 
+interfile = saveplace + "/" + cell + "_" + tag + "-ml.dat" 
 
 # The MAT model is governed by a small number of parameters: the spike threshold
 # (omega), the amplitudes of the adaptation kernels (alpha_1, alpha_2), the time
@@ -114,6 +115,8 @@ w0 = mlest.estimate(reg_lambda=1e1, reg_alpha=1e1)
 import progressbar
 from dstrf import crossvalidate
 
+START = time.time()
+
 l1_ratios = config["crossval"]["l1_ratios"]
 reg_grid = np.logspace(config["crossval"]["logspace_start"], config["crossval"]["logspace_end"], 
                        config["crossval"]["logspace_steps"])[::-1]
@@ -144,6 +147,12 @@ rf_alpha, rf_lambda = best[0]
 w0 = best[3]
 print("best solution: rank={:.3f}, alpha={:.3f}, lambda={:.3f}, loglike={:.3f}".format(krank, rf_alpha, rf_lambda, best[2]))
 print(w0[:3])
+
+FINISH = time.time()
+
+HRS,MINS = divmod(FINISH-START,60)
+
+print("cross-validation took {}:{:02d}".format(HRS, int(MINS)))
 
 mlest = mle.matfact(assim_data["stim"], kcosbas, krank, assim_data["spike_v"], assim_data["spike_h"],
                         assim_data["stim_dt"], assim_data["spike_dt"], 
@@ -179,5 +188,7 @@ with open(interfile, 'wb') as outfile:
                       rf_alpha=rf_alpha,
                       krank=krank,
                       mlest=mlest,
-                      mltest=mltest),
+                      mltest=mltest,
+                      corr=psth_corr,
+                      eo=eo),
                   outfile,protocol=pickle.HIGHEST_PROTOCOL)

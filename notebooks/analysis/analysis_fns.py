@@ -9,7 +9,7 @@ sys.path.append("../") # for importing utils and glm
 import pickle
 
 
-def load_mldat(folder,root="/home/tyler/dstrf_results/",exclude=[],EOcut=0.25,CORcut=0.25):
+def load_mldat(folder,root="/home/tyler/dstrf_results/",exclude=[],EOcut=0.2,CORcut=0.2):
 
     path = "/".join([root,folder,""])
     results = {}
@@ -24,13 +24,14 @@ def load_mldat(folder,root="/home/tyler/dstrf_results/",exclude=[],EOcut=0.25,CO
                         try:
                             results[name] = pickle.load(interfile)
                         except:
+                            print("Error loading {}".format(name))
                             pass
                     
-    maxlik = np.asarray([results[m]["w0"][:3] for m in results.keys() if results[m] and results[m]["eo"]>=EOcut and results[m]["eo"]>=EOcut and results[m]["corr"]>=CORcut])
+    maxlik = np.asarray([results[m]["w0"][:3] for m in results.keys() if results[m] and results[m]["eo"]>=EOcut and results[m]["corr"]>=CORcut])
     return results,maxlik
 
 
-def load_emdat(folder,root="/home/tyler/dstrf_results/",exclude=[],EOcut=0.25,CORcut=0.25):
+def load_emdat(folder,root="/home/tyler/dstrf_results/",exclude=[],EOcut=0,CORcut=0):
 
     path = "/".join([root,folder,""])
     results = {}
@@ -46,7 +47,7 @@ def load_emdat(folder,root="/home/tyler/dstrf_results/",exclude=[],EOcut=0.25,CO
                     except:
                         print("Error loading {}".format(name))
                         
-    maxlik = np.asarray([results[m]["w1"][:3] for m in results.keys() if results[m] and results[m]["eo"]>=EOcut and results[m]["eo"]>=EOcut and results[m]["corr"]>=CORcut])
+    maxlik = np.asarray([results[m]["w1"][:3] for m in results.keys() if results[m] and results[m]["eo"]>=EOcut and results[m]["corr"]>=CORcut])
     return results,maxlik
 
 
@@ -75,7 +76,7 @@ def crnplt(data,label="",hist=True,mrange=None,labs=[r'$\omega$',r'$\alpha_1$',r
             xticks(rotation=45)    
             if 3*i+j == 3: ylabel(labs[1]);
             if 3*i+j == 6: ylabel(labs[2])
-            if 3*i+j == 0: ylabel(r'$\omega$')
+            if 3*i+j == 0: ylabel(labs[0])
             if 3*i+j == 7: xlabel(labs[1])
             if 3*i+j == 8: xlabel(labs[2])
             if 3*i+j == 6: xlabel(labs[0])

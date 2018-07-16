@@ -121,7 +121,7 @@ class mat(object):
         """
         from theano import shared
         if fselect is None or bselect is None:
-            self._sh_interp = shared(self._interp)
+            self._sh_interp = shared(self._interp, borrow=True)
             self._sh_X_stim = shared(self._X_stim)
             self._sh_X_spike = shared(self._X_spike)
             self._sh_Y_spike = shared(self._spikes)

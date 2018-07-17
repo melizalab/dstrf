@@ -6,6 +6,12 @@ from __future__ import print_function, division, absolute_import
 import numpy as np
 
 
+def exponential(tau, amplitude, duration, dt):
+    """ An exponential decay with time constant tau """
+    tt = np.arange(0, duration, dt)
+    return amplitude * 1 / tau * np.exp(-tt / tau), tt
+
+
 def alpha(tau, amplitude, duration, dt):
     """An alpha function kernel with time constant tau"""
     tt = np.arange(0, duration, dt)

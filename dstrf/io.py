@@ -36,7 +36,6 @@ def load_rothman(cell, root, window, step, **specargs):
 
     Additional keyword arguments are passed to load_stimulus()
     """
-    spikesroot = os.path.join(root, cell)
     stimroot = os.path.join(root, "stims")
 
     out = []
@@ -47,7 +46,6 @@ def load_rothman(cell, root, window, step, **specargs):
         for f in open(fname):
             l = f.strip().split()
             spikes.append(np.asarray(l,dtype='d'))
-        spikes = tuple(spikes)
         out.append({"cell_name": cell,
                     "stim_name": stim,
                     "duration": dur,
@@ -55,6 +53,14 @@ def load_rothman(cell, root, window, step, **specargs):
                     "stim_dt": step,
                     "spikes": spikes})
     return out
+
+
+def load_rothman_rf(cell, root):
+    """Load receptive field from rothman simulation dataset"""
+    spikesroot = os.path.join(root, cell)
+    rffile = np.load(os.path.join(spikesroot, "rf.npz"))
+    return rffile['rf']
+
 
 
 def load_neurobank(cell, window, step, **specargs):
@@ -163,7 +169,7 @@ def pad_stimuli(data, before, after, fill_value=None):
         d["stim"] = np.c_[p_before, s, p_after]
 
         newtl = tl.offset(tl.subrange(d["spikes"], -before, d["duration"] + after), -before)
-        d["spikes"] = tuple(newtl)
+        d["spikes"] = list(newtl)
         d["duration"] += before + after
     return data
 

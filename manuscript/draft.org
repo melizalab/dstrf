@@ -1,0 +1,186 @@
+#+BIBLIOGRAPHY: /Users/dmeliza/documents/bibtex/references plain
+
+Title: Inferring intrinsic neuronal dynamics from extracellular auditory responses
+
+* Introduction
+
+Sensory encoding models are powerful tools for investigating the computations
+performed by neural circuits. Generally speaking, an encoding model predicts the
+distribution of responses a neuron will give to an arbitrary stimulus. A popular
+family of models is the linear-nonlinear (LN) cascade, which conceptualizes the
+transformation from stimulus to responses as one or more linear, time-invariant
+filters (i.e., receptive fields) convolved with some representation of the
+stimulus, followed by a nonlinear operation that produces a sequence of action
+potentials. This approach reflects our conceptualization of neurons as
+integrating a set of synaptic inputs and then deciding whether or not to fire a
+spike.
+
+
+
+Computations emerge from connectivity and intrinsic dynamics, but dynamics are
+often not included in sensory coding models.
+
+  Many auditory neurons have complex dynamics: adaptation, bursting, phasic
+  firing. Although these behaviors can be easily seen in intracellular
+  recordings from slices and culture, it is difficult to directly observe their
+  role in sensory coding vivo due to the challenges of recording intracellularly
+  in vivo.
+
+  Our goal is to determine if information about intracellular dynamics can be
+  inferred from extracellular recordings, which can be obtained from large
+  numbers of neurons over long time periods. We simulated spiking responses
+  using a "dynamical RF" model that combines a linear spectrotemporal receptive
+  field with a nonlinear, conductance-based biophysical model of spike
+  generation, and then used the generalized linear model (GLM) to estimate the
+  receptive field parameters
+
+We make use of the standard
+  generalized linear model
+
+
+
+\citep{Weber:2017es}
+
+* Methods
+
+** Stimuli
+
+The stimuli used to simulate auditory responses were songs recorded from 30
+adult male zebra finches /Taeniopygia guttata/ from our colony. All procedures
+were performed according to NIH guidelines and protocols approved by the
+University of Virginia IACUC. Birds received finch seed (Abba Products,
+Hillside NJ) and water /ad libitum/ and were kept on a 16:8 h light:dark
+schedule in temperature- and humidity-controlled rooms (\SI{22}{\celsius}).
+During recording, birds were housed individually in soundproof acoustic
+isolation boxes (Eckel Industries). A mirror was placed in the box to stimulate
+singing. Recordings were made with an Audio-Technica Pro 70 microphone,
+digitized with a Focusrite Scarlett 2i2 at 44.1 kHz, and stored to disk using
+custom C++ software (https://github.com/melizalab/jill; version 2.1.4). A
+typical recording session lasted 2–3 days. A single representative song was
+selected from each bird’s recorded corpus and was high-pass filtered at 500Hz
+with a 4th-order Butterworth filter.
+
+
+** Linear-Dynamical Cascade Model
+
+In the first set of experiments, we simulated responses using a generative model
+that combines a linear filter with a single-compartment biophysical model. In
+the linear step, the stimulus $S(t)$ was convolved with a filter $k(t)$ to
+produce a driving current $I_S(t)$. We used Gaussian white noise and songs as
+stimuli. For song stimuli, the sound pressure waveform was first converted to a
+spectrogram $S(\omega, t$)$ using the short-time Fourier transform method with a
+256-point Hanning window and a step size of 1.0 ms. This meant that the filter
+was two-dimensional, and the convolution was summed over all the frequency
+channels:
+
+\begin{align}
+I_S(t) & = \sum_\omega \sum_\tau S(\omega, t) k(\omega, \tau - t)
+\end{align}
+
+To generate variability from trial to trial, an additional noise current
+$I_N(t)$ was added, with a $1/f$ frequency distribution, a cutoff of 100 Hz, and
+a signal-to-noise ratio of 4 (RMS). These statistics were chosen to mimic the
+low-frequency spontaneous synaptic potentials seen /in vivo/ (cite).
+
+The nonlinear dynamical step of the model was defined by the equations of motion
+for a single-compartment neuron model. The voltage dynamics were governed by the
+sum of the external driving currents $I_S(t)$ and $I_N(t)$ and the intrinsic
+currents, which included a leak current and various voltage-gated currents:
+
+\begin{align}
+C_m \frac{dV}{dt} & = g_{l}(E_{l} - V) + g_{Na}m^3h(E_{Na} - V) +
+g_{K}n^4(E_{K} - V) + \cdots + I_S(t) + I_N(t)
+\end{align}
+
+To understand the effects of intrinsic dynamics, we used three biophysical
+models with strikingly different response properties (Fig XX). The
+regular-spiking (/RS/) model, which was designed to reproduce the spiking
+patterns of superficial pyramidal neurons in the neocortex
+\citep{Pospischil:2008p10772}, produces regular, slowly adapting trains of
+action potentials. The tonic-spiking (/TS/) and phasic-spiking (/PS/) models,
+which were designed to reproduce the spiking patterns of neurons in the zebra
+finch caudal mesopallium (CM) \citep{Chen:2017cs}, are much more strongly
+adapting than the /RS/ model. The /TS/ model produces transient responses to
+strong step currents because of depolarization block, whereas the /PS/ model
+produces single-spike responses to step currents across a broad range of
+amplitudes because of a low-threshold potassium condutance ($g_{KLT}$). These
+differences in dynamical behaviors result from the different sets of
+conductances in each model (Table~\ref{tab:params}).
+
+% Place tables after the first paragraph in which they are cited.
+\begin{table}[!ht]
+\centering
+\caption{
+{\bf Parameter values for biophysical models.}}
+\begin{tabular}{|l|r|r|r|}
+\hline
+{\bf Parameter} & {\bf RS} & {\bf TS} & {\bf PS}\\ \thickhline
+$C_m$ (pF) & 60 & 60 & 40\\ \hline
+$E_l$ (mV) & --70 & --75 & --75\\ \hline
+$g_l$ (nS) & 1.3 & 1.3 & 1.3\\ \hline
+$E_{Na}$ (mV) & 50 & 55 & 55\\ \hline
+$g_{Na}$ (nS) & 600 & 750 & 750\\ \hline
+$E_K$ (mV) & --90 & --82 & --82\\ \hline
+$g_{KDR}$ (nS) & 90 & 0 & 0\\ \hline
+$g_{KHT}$ (nS) & 0 & 95 & 95\\ \hline
+$g_{KLT}$ (nS) & 0 & 0 & 50\\ \hline
+$g_{KM}$ (nS) & 1.67 & 0 & 0\\ \hline
+$g_{KA}$ (nS) & 0 & 30 & 30\\ \hline
+$E_h$ (mV) & & --43 & --43\\ \hline
+$g_h$ (nS) & 0 & 0.5 & 0.5\\ \hline
+\end{tabular}
+\begin{flushleft} Symbols: $C_m$, capacitance; $E_l$, leak current reversal potential; $g_l$, leak conductance; $E_{Na}$, sodium reversal potential; $g_{Na}$ (maximum) sodium conductance; $E_K$, potassium reversal potential; $g_{KDR}$, delayed-rectifier potassium conductance; $g_{KHT}, high-threshold potassium conductance; $g_{KLT}, low-threshold potassium conductance; $g_{KM} M-type (slowly activating) potassium conductance; $g_{KA}$ A-type (slowly inactivating) potassium condutance; $E_h$, reversal potential for h-type (hyperpolarization-activated, cation-nonselective) current; $g_h$, h-type conductance.
+\end{flushleft}
+\label{tab:params}
+\end{table}
+
+In all three models, the dynamics of the voltage-gated conductances were defined
+by first-order kinetics; for example,
+
+\begin{align}
+\frac{dm}{dt} & = \frac{m_\inf(V) - m}{\tau_m(V)}.
+\end{align}
+
+
+
+\begin{align}
+\frac{dm}{dt} & =
+
+includes a fast,
+inactivating sodium conductance $g_{Na}$, a delayed-rectifier potassium
+conductance $g_{Kd}$, and a slowly-activating M-type potassium conductance
+$g_{KM}$. This model,  The
+tonic-spiking (/TS/) model includes $g_{Na}$, a high-threshold potassium
+conductance $g_{KHT}$, a low-threshold potassium conductance $g_{KLT}$, a rapidly-inactivating A-type
+potassium conductance $g_{KA}$
+
+
+All of the models in this study are linear-nonlinear (LN) cascade models that produce
+spiking responses. The linear component consists of a time-invariant
+spectrotemporal filter, which is convolved with the spectrogram of the    To emulate the frequency selectivity of the zebra finch cochlea, sound waveforms were transformed into spectrotemporal cochleagrams using a gammatone filter bank with a maximum frequency of 8000 Hz and a minimum frequency of 500 Hz. The temporal resolution was downsampled to 5 ms and the spectral dimension to 30 frequency bins. In preliminary testing we found that downsampling the stimulus this much allowed for much quicker data assimilation without sacrificing the models’ predictive powers. To simplify and reduce the number of parameters in the receptive field, we implemented a factorized suggested by [@essentialcomplexity] with a cosine basis for the temporal as suggested by [@pillow2008]. Ideally, hyper-parameters that determine the size of the filter such as the number of cosines and spectral channels would be estimated for each neuron. However, for the sake of consistency in the number of parameters being estimated, we used the same size filter for each neuron. Each filter had one channel of 30 different frequency bins in the spectral axis with 10 cosines in the temporal axis spanning 150 milliseconds, resulting in 40 total filter parameters to be fit through data assimilation.
+
+* Results
+
+
+* Discussion
+
+* Figure Legends
+
+** Figure 2
+
+* Attic
+
+  The neural activity evoked by sensory stimuli is transformed as it propagates
+  through ascending pathways. In successive areas, activity begins to explicitly
+  encode higher-order features of stimuli and may ultimately come to represent
+  specific objects or categories
+  \citep{Rolls1995,Freedman:2001p8727,Tsunada:2012p13725}. This hierarchical
+  increase in connectivity is supported by selective feedforward convergence
+  \citep{Hubel1962,Serre:2007p5226}, recurrent dynamics in local ensembles
+  \citep{Gilbert:1992p9989,Harris:2013p15128}, and long-range feedback from
+  higher areas \citep{Li:2004p9667}. Sensory activity is also transformed by
+  cell-intrinsic mechanisms \citep{Llinas:1988ty}. Areas in the auditory
+  hindbrain and midbrain, for example, contain multiple cell types with distinct
+  morphological and biophysical properties that enhance coding for amplitude
+  envelope modulations, periodicity, and other complementary acoustic features
+  \citep{Peruzzi:2000p15325,Carr:2002p15327,Rothman:2003kr}.

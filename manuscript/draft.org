@@ -2,6 +2,12 @@
 
 Title: Inferring intrinsic neuronal dynamics from extracellular auditory responses
 
+Although it is now possible to selectively
+knock out, activate, or silence specific cell types, it is still challenging to
+directly relate intrinsic dynamics to function.
+
+
+
 * Introduction
 
 Sensory encoding models are powerful tools for investigating the computations
@@ -40,6 +46,11 @@ We make use of the standard
 
 
 \citep{Weber:2017es}
+
+* Results
+
+
+* Discussion
 
 * Methods
 
@@ -141,28 +152,32 @@ by first-order kinetics; for example,
 \frac{dm}{dt} & = \frac{m_\inf(V) - m}{\tau_m(V)}.
 \end{align}
 
+The formulations used to describe how the steady-state ($m_\inf(V)$) and time
+constant ($tau_m(V)$) dependended on voltage varied among the currents and
+models. The equations for the TS and PS models are exactly as described by
+\citet{Chen:2017cs}. The equations for the RS models were from
+\citet{Pospischil:2008p10772}, but some were refit to hyperbolic tangents to
+improve numerical stability (see Appendix). $C_m$ and the maximal conductance
+parameters were also adjusted to match the effective size and time constants of
+the TS and PS models. Unlike the sodium current in the TS and PS models, the
+sodium current in the RS model does not exhibit depolarization block
+\citep{Bianchi:2012im}. The $g_{KDR}$ conductance in the RS model and the
+$g_{KHT}$ conductance in the TS and PS models have different formulations but
+serve a similar function of rapidly repolarizing the membrane after a spike.
 
+The biophysical component of the model was implemented using custom Python
+software (spyks, version 0.6.7; \url{https://github.com/melizalab/spyks}), which
+generates C++ code from a symbolic description of the equations of motion and
+parameters. The descriptors for the models are available as part of the package.
+The equations were integrated using a 5th-order Runge-Kutta algorithm with an
+adaptive error tolerance of \num{1e-5} and an interpolated step size of 0.025
+ms.
 
-\begin{align}
-\frac{dm}{dt} & =
-
-includes a fast,
-inactivating sodium conductance $g_{Na}$, a delayed-rectifier potassium
-conductance $g_{Kd}$, and a slowly-activating M-type potassium conductance
-$g_{KM}$. This model,  The
-tonic-spiking (/TS/) model includes $g_{Na}$, a high-threshold potassium
-conductance $g_{KHT}$, a low-threshold potassium conductance $g_{KLT}$, a rapidly-inactivating A-type
-potassium conductance $g_{KA}$
-
+** Generalized Linear Model
 
 All of the models in this study are linear-nonlinear (LN) cascade models that produce
 spiking responses. The linear component consists of a time-invariant
 spectrotemporal filter, which is convolved with the spectrogram of the    To emulate the frequency selectivity of the zebra finch cochlea, sound waveforms were transformed into spectrotemporal cochleagrams using a gammatone filter bank with a maximum frequency of 8000 Hz and a minimum frequency of 500 Hz. The temporal resolution was downsampled to 5 ms and the spectral dimension to 30 frequency bins. In preliminary testing we found that downsampling the stimulus this much allowed for much quicker data assimilation without sacrificing the models’ predictive powers. To simplify and reduce the number of parameters in the receptive field, we implemented a factorized suggested by [@essentialcomplexity] with a cosine basis for the temporal as suggested by [@pillow2008]. Ideally, hyper-parameters that determine the size of the filter such as the number of cosines and spectral channels would be estimated for each neuron. However, for the sake of consistency in the number of parameters being estimated, we used the same size filter for each neuron. Each filter had one channel of 30 different frequency bins in the spectral axis with 10 cosines in the temporal axis spanning 150 milliseconds, resulting in 40 total filter parameters to be fit through data assimilation.
-
-* Results
-
-
-* Discussion
 
 * Figure Legends
 

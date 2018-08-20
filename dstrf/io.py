@@ -31,7 +31,7 @@ def load_crcns(cell, stim_type, root, window, step, **specargs):
     return out
 
 
-def load_rothman(cell, root, window, step, **specargs):
+def load_rothman(cell, root, window, step, load_internals=False, **specargs):
     """Load stimulus and response data from SNR4synhg
 
     Additional keyword arguments are passed to load_stimulus()
@@ -39,19 +39,25 @@ def load_rothman(cell, root, window, step, **specargs):
     stimroot = os.path.join(root, "stims")
 
     out = []
-    for fname in sorted(glob.iglob(os.path.join(root,cell,"spike*"))):
-        stim = "stim{}-0.wav".format(fname[-2:])
-        spec, dur = load_stimulus(os.path.join(stimroot,stim), window, step, **specargs)
+    for fname in sorted(glob.iglob(os.path.join(root, cell, "spike*"))):
+        stim_idx = int(fname[-2:])
+        stim = "stim{}-0.wav".format(stim_idx)
+        spec, dur = load_stimulus(os.path.join(stimroot, stim), window, step, **specargs)
         spikes = []
         for f in open(fname):
-            l = f.strip().split()
-            spikes.append(np.asarray(l,dtype='d'))
-        out.append({"cell_name": cell,
-                    "stim_name": stim,
-                    "duration": dur,
-                    "stim": spec,
-                    "stim_dt": step,
-                    "spikes": spikes})
+            spks = f.strip().split()
+            spikes.append(np.asarray(spks, dtype='d'))
+        celldata = {"cell_name": cell,
+             "stim_name": stim,
+             "duration": dur,
+             "stim": spec,
+             "stim_dt": step,
+             "spikes": spikes}
+        if load_internals:
+            npzfile = "stim{}.npz".format(stim_idx)
+            npzdata = np.load(os.path.join(root, cell, npzfile))
+            celldata["I"] = npzdata['conv']
+        out.append(celldata)
     return out
 
 

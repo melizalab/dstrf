@@ -1,0 +1,22 @@
+emcee==2.2.1
+Theano==1.0.1
+scikit-learn
+numpy
+scipy
+matplotlib
+ipykernel
+ruamel.yaml
+seaborn
+corner
+pyspike
+# lab dependencies
+toelis
+ewave
+libtfr
+quickspikes
+spyks
+-e git+https://github.com/tdrobbins/gammatone@fb9390ed9fb249de52227a81283a0db0884c1da2#egg=Gammatone
+# install these from source or from --extra-index-url https://pypi.fury.io/9sWu_vahYMyGeaBAZ8ac/melizalab/
+# neurofit
+# mat-neuron
+# also make sure to do a python setup.py develop in the current directory

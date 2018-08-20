@@ -28,7 +28,17 @@ def load_mldat(folder,root="/home/tyler/dstrf_results/",exclude=[],EOcut=0.2,COR
                             print("Error loading {}".format(name))
                             pass
                     
-    maxlik = np.asarray([results[m]["w0"][:3] for m in results.keys() if results[m] and results[m]["eo"]>=EOcut and results[m]["corr"]>=CORcut])
+    maxlik = []
+    delist = []
+    for m in results.keys():
+        if "w0" in results[m].keys() and results[m]["eo"]>=EOcut and results[m]["corr"]>=CORcut:
+            maxlik.append(results[m]["w0"][:3])
+        else:
+            delist.append(m)
+            
+    for d in delist:
+        del results[d]
+
     return results,maxlik
 
 
@@ -48,8 +58,18 @@ def load_emdat(folder,root="/home/tyler/dstrf_results/",exclude=[],EOcut=0.2,COR
                     except:
                         print("Error loading {}".format(name))
                         
-    maxlik = np.asarray([results[m]["w1"][:3] for m in results.keys() if results[m] and results[m]["eo"]>=EOcut and results[m]["corr"]>=CORcut])
-    return results,maxlik
+    maxlik = []
+    delist = []
+    for m in results.keys():
+        if "w1" in results[m].keys() and results[m]["eo"]>=EOcut and results[m]["corr"]>=CORcut:
+            maxlik.append(results[m]["w1"][:3])
+        else:
+            delist.append(m)
+            
+    for d in delist:
+        del results[d]
+        
+    return results,np.asarray(maxlik)
 
 def load_results(folder,root="/home/tyler/dstrf_results/",exclude=[],EOcut=0.2,CORcut=0.2):
     results = {}

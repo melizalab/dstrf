@@ -10,42 +10,84 @@ directly relate intrinsic dynamics to function.
 
 * Introduction
 
-Sensory encoding models are powerful tools for investigating the computations
-performed by neural circuits. Generally speaking, an encoding model predicts the
-distribution of responses a neuron will give to an arbitrary stimulus. A popular
-family of models is the linear-nonlinear (LN) cascade, which conceptualizes the
-transformation from stimulus to responses as one or more linear, time-invariant
-filters (i.e., receptive fields) convolved with some representation of the
-stimulus, followed by a nonlinear operation that produces a sequence of action
-potentials. This approach reflects our conceptualization of neurons as
-integrating a set of synaptic inputs and then deciding whether or not to fire a
-spike.
+  sensory processing circuits contain neurons with diverse intrinsic properties:
+  variations in morphology and channel complement, which determine the dynamics
+  of how cells transform synaptic inputs into spiking outputs.
+
+  by studying simple systems (stomatogastric ganglion), we've gained an
+  appreciation of how these properties can be tuned to give cells and circuits
+  specific computational abilities (resonance, filtering, pattern separation and
+  completion)
+
+  function of intrinsic diversity at cortical levels is not well understood, in
+  part because it is so challenging to measure or manipulate intrinsic
+  properties while animals are engaged in sensory-driven behaviors. Most work
+  relating dynamics to function has relied on computational models and simulated
+  inputs, which contain many assumptions.
+
+  these models indicate a clear effect of dynamics on function (citations),
+  which means that it ought to be possible to infer something about the hidden
+  dynamics from how neurons respond to sensory stimulation.
+
+  We (Toth et al 2011, Meliza et al 2014) have shown that the parameters of very
+  detailed models can be estimated from intracellular voltage responses to
+  complex driving currents. These currents were directly injected into the
+  neurons, but would it be possible to make similar inferences when the driving
+  current is supplied by sensory stimulation? If so, then one could use
+  extracellular recordings, which can be obtained simultaneously from up to
+  hundreds of neurons during behavior, to rapidly survey intrinsic dynamical
+  properties in a brain region, and, ultimately perhaps, build a large-scale
+  circuit model that incorporates this diversity. This in turn would open up the
+  possibility of rationally manipulating circuit behaviors by pharmacologically
+  targeting specific cell types.
+
+  In this study, we asked whether it is possible to make reliable inferences
+  about intrinsic dynamics from extracellular responses to natural stimuli by
+  using a simple linear-dynamical cascade model to simulate auditory responses
+  in the zebra finch caudal mesopallium. We chose this area because we know it
+  contains two putatively excitatory cell types with distinct phasic and tonic
+  dynamics (Chen and Meliza). Here, we combined the single-compartment biophysical models we
+  developed for these cell types with a linear spectrotemporal receptive field
+  model.
+
+ developed
+  detailed biophysical models of two putatively excitatory cell types
+
+ Sensory encoding models are powerful tools for investigating the computations
+ performed by neural circuits. Generally speaking, an encoding model predicts the
+ distribution of responses a neuron will give to an arbitrary stimulus. A popular
+ family of models is the linear-nonlinear (LN) cascade, which conceptualizes the
+ transformation from stimulus to responses as one or more linear, time-invariant
+ filters (i.e., receptive fields) convolved with some representation of the
+ stimulus, followed by a nonlinear operation that produces a sequence of action
+ potentials. This approach reflects our conceptualization of neurons as
+ integrating a set of synaptic inputs and then deciding whether or not to fire a
+ spike.
 
 
 
-Computations emerge from connectivity and intrinsic dynamics, but dynamics are
-often not included in sensory coding models.
+ Computations emerge from connectivity and intrinsic dynamics, but dynamics are
+ often not included in sensory coding models.
 
-  Many auditory neurons have complex dynamics: adaptation, bursting, phasic
-  firing. Although these behaviors can be easily seen in intracellular
-  recordings from slices and culture, it is difficult to directly observe their
-  role in sensory coding vivo due to the challenges of recording intracellularly
-  in vivo.
+ Many auditory neurons have complex dynamics: adaptation, bursting, phasic
+ firing. Although these behaviors can be easily seen in intracellular recordings
+ from slices and culture, it is difficult to directly observe their role in
+ sensory coding vivo due to the challenges of recording intracellularly in vivo.
 
-  Our goal is to determine if information about intracellular dynamics can be
-  inferred from extracellular recordings, which can be obtained from large
-  numbers of neurons over long time periods. We simulated spiking responses
-  using a "dynamical RF" model that combines a linear spectrotemporal receptive
-  field with a nonlinear, conductance-based biophysical model of spike
-  generation, and then used the generalized linear model (GLM) to estimate the
-  receptive field parameters
+ Our goal is to determine if information about intracellular dynamics can be
+ inferred from extracellular recordings, which can be obtained from large numbers
+ of neurons over long time periods. We simulated spiking responses using a
+ "dynamical RF" model that combines a linear spectrotemporal receptive field with
+ a nonlinear, conductance-based biophysical model of spike generation, and then
+ used the generalized linear model (GLM) to estimate the receptive field
+ parameters
 
-We make use of the standard
-  generalized linear model
-
+ We make use of the standard
+   generalized linear model
 
 
-\citep{Weber:2017es}
+
+ \citep{Weber:2017es}
 
 * Results
 
@@ -67,7 +109,7 @@ isolation boxes (Eckel Industries). A mirror was placed in the box to stimulate
 singing. Recordings were made with an Audio-Technica Pro 70 microphone,
 digitized with a Focusrite Scarlett 2i2 at 44.1 kHz, and stored to disk using
 custom C++ software (https://github.com/melizalab/jill; version 2.1.4). A
-typical recording session lasted 2–3 days. A single representative song was
+typical recording session lasted 2–-3 days. A single representative song was
 selected from each bird’s recorded corpus and was high-pass filtered at 500Hz
 with a 4th-order Butterworth filter.
 
@@ -96,7 +138,7 @@ low-frequency spontaneous synaptic potentials seen /in vivo/ (cite).
 The nonlinear dynamical step of the model was defined by the equations of motion
 for a single-compartment neuron model. The voltage dynamics were governed by the
 sum of the external driving currents $I_S(t)$ and $I_N(t)$ and the intrinsic
-currents, which included a leak current and various voltage-gated currents:
+currents, which included a leak current and various voltage-gated sodium and potassium currents:
 
 \begin{align}
 C_m \frac{dV}{dt} & = g_{l}(E_{l} - V) + g_{Na}m^3h(E_{Na} - V) +

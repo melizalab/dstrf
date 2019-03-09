@@ -1,10 +1,10 @@
 emcee==2.2.1
-Theano==1.0.1
-scikit-learn
+Theano
 numpy
 scipy
 matplotlib
 ipykernel
+notebook
 PyYAML
 Munch
 seaborn

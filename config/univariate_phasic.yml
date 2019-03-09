@@ -1,0 +1,36 @@
+model:
+  dt: 0.5
+  ataus: [10.0, 200.0]
+  t_refract: 2.0
+  filter:
+    len: 60
+    ncos: 8
+data:
+  filter:
+    taus: [32.0, 16.0]
+    amplitude: 10.0
+  dynamics:
+    model: "models/biocm_phasic.yml"
+    current_scaling: 9.0
+  trial_noise:
+    sd: 2.0
+  dt: 10.0
+  duration: 100000
+  trials: 10
+spike_detect:
+  thresh: -20.0
+  rise_dt: 1.0
+emcee:
+  nsteps: 200
+  nthreads: 8
+  nwalkers: 500
+  startpos_scale: 2.0
+mat:
+  bounds:
+  - [0, 20]
+  - [-50, 200]
+  - [-5, 10]
+  model_dt: 0.5
+  nlin: exp
+  refract: 2.0
+  taus: [10.0, 200.0]

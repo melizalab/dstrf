@@ -25,6 +25,7 @@ class mat(object):
         import scipy.sparse as sps
         from dstrf.strf import lagged_matrix
         self.dtype = config.floatX
+        config.gcc.cxxflags = "-Wno-c++11-narrowing"
 
         if stim.ndim == 1:
             stim = np.expand_dims(stim, 0)
@@ -150,9 +151,7 @@ class mat(object):
         return np.r_[np.exp(meanrate),
                      np.zeros(hdim + kdim)].astype(self.dtype)
 
-
     def estimate(self, w0=None, reg_lambda=0, reg_alpha=0, avextol=1e-6, maxiter=300, **kwargs):
-
         """Compute max-likelihood estimate of the model parameters
 
         w0: initial guess at parameters. If not supplied (default), sets omega

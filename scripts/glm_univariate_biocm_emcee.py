@@ -112,6 +112,7 @@ if __name__ == "__main__":
     mat.random_seed(1)
     assim_data = simulate(cf, k1)
 
+
     # initial guess of parameters using regularized ML
     stim = assim_data[0]["stim"]
     spike_v = np.stack([d["spike_v"] for d in assim_data], axis=1)
@@ -198,6 +199,7 @@ if __name__ == "__main__":
 
     outfile = os.path.join("results", "{}_samples.npz".format(model_name))
     np.savez(outfile,
-             astim=assim_data[0]["stim"], aspikes=spike_v,
+             astim=assim_data[0]["stim"], acurrent=assim_data[0]["I"], astate=assim_data[0]["state"], aspikes=spike_v,
              pos=pos, prob=prob, eo=eo, cc=cc,
-             tstim=tstim, tspikes=tspike_v, pspikes=np.column_stack(pred_spikes))
+             tstim=tstim, tcurrent=test_data[0]["I"], tstate=test_data[0]["state"], tspikes=tspike_v,
+             pspikes=np.column_stack(pred_spikes))

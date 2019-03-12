@@ -6,6 +6,7 @@ model:
     len: 60
     ncos: 8
 data:
+  source: "univariate_noise_dynamical"
   filter:
     taus: [32.0, 16.0]
     amplitude: 10.0
@@ -14,6 +15,7 @@ data:
     current_scaling: 9.0
   trial_noise:
     sd: 2.0
+  random_seed: 1
   dt: 10.0
   duration: 100000
   trials: 10

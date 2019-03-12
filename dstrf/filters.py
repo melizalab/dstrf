@@ -59,7 +59,7 @@ def strf(nfreq, ntau, f_max, f_peak, t_peak, ampl, f_sigma, t_sigma, f_alpha, t_
     return Gtf, tscale, f
 
 
-def gabor(nfreq, ntau, f_max, f_peak, t_peak, ampl, sigma, theta, lmbda, psi, gamma):
+def gabor(nfreq, ntau, f_max, f_peak, t_peak, ampl, f_sigma, t_sigma, theta, lmbda, psi):
     """Construct a parametric (gabor) STRF
 
     nfreq: resolution of the filter in pixels
@@ -68,18 +68,15 @@ def gabor(nfreq, ntau, f_max, f_peak, t_peak, ampl, sigma, theta, lmbda, psi, ga
     f_peak: center frequency for the filter
     t_peak: offset between stimulus and response in ms (range: 0 to ntau)
     ampl:   amplitude of the wavelet peak
-    f_sigma: width of the filter in the frequency axis -- bigger gamma = narrower frequency band
-    t_sigma: width of the filter in the time axis -- bigger sigma = narrower time band
-    f_alpha: depth of inhibitory sidebands on frequency axis -- bigger f_alpha = deeper sidebands
-    t_alpha: depth of inhibitory sidebands on time axis -- bigger t_alpha = deeper sidebands
+    f_sigma: width of the filter in the frequency axis -- bigger = narrower frequency band
+    t_sigma: width of the filter in the time axis -- bigger = narrower time band
+    ...
     Returns the RF (nfreq, ntau), tau (ntau,), and f (nfreq,)
     """
-    scale = nfreq / 50.0
-    sigma_x = sigma
-    sigma_y = sigma / gamma
-    t = np.arange(0, float(ntau) * scale + 1)
-    tscale = np.arange(0, ntau + 1, float(ntau) / nfreq)
-    x = t_peak * scale
+    ntau -= 1
+    t = np.arange(float(np.negative(ntau)), 1)
+    tscale = np.arange(np.negative(ntau), 1, 2)
+    x = t_peak
     f = np.arange(0, f_max + 1, float(f_max) / nfreq)
     y = f_peak
     tc = t + x
@@ -88,5 +85,5 @@ def gabor(nfreq, ntau, f_max, f_peak, t_peak, ampl, sigma, theta, lmbda, psi, ga
     # Rotation
     x_theta = tprime * np.cos(theta) + fprime * np.sin(theta)
     y_theta = -tprime * np.sin(theta) + fprime * np.cos(theta)
-    gb = ampl * np.exp(-.5 * (x_theta ** 2 / sigma_x ** 2 + y_theta ** 2 / sigma_y ** 2)) * np.cos(2 * np.pi / lmbda * x_theta + psi)
+    gb = ampl * np.exp(-.5 * (x_theta ** 2 / t_sigma ** 2 + y_theta ** 2 / f_sigma ** 2)) * np.cos(2 * np.pi / lmbda * x_theta + psi)
     return (gb, tscale, f)

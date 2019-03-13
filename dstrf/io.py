@@ -9,6 +9,7 @@ import json
 import toelis as tl
 import numpy as np
 
+
 def load_crcns(cell, stim_type, root, window, step, **specargs):
     """Load stimulus and response data from CRCNS repository
 
@@ -232,7 +233,6 @@ def merge_data(seq):
     spike_v, spike_h, spike_dt}
 
     """
-    import scipy.sparse as sps
     stim_dts = [d["stim_dt"] for d in seq]
     stim_dt = stim_dts[0]
     if not np.all(np.equal(stim_dts, stim_dt)):

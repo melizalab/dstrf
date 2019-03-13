@@ -6,6 +6,7 @@ matplotlib
 ipykernel
 notebook
 PyYAML
+yamlmagic
 Munch
 seaborn
 corner

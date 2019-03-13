@@ -48,6 +48,44 @@ def multivariate_noise_glm(cf, random_seed=None, trials=None):
     return data
 
 
+def multivariate_song_glm(cf, data, random_seed=None, trials=None):
+    """Simulate GLM response to song stimuli. Note: modifies data in place"""
+    from .models import predict_spikes_glm
+    filter_params = cf.data.filter.copy()
+    filter_fn = getattr(filters, filter_params.pop("fn"))
+    kernel, _, _ = filter_fn(**filter_params)
+
+    n_taus = len(cf.model.ataus)
+    n_freq = kernel.shape[0]
+    upsample = int(cf.data.dt / cf.model.dt)
+    n_trials = trials or cf.data.trials
+
+    np.random.seed(random_seed or cf.data.random_seed)
+    mat.random_seed(random_seed or cf.data.random_seed)
+
+    for d in data:
+        nchan, nframes = d["stim"].shape
+        assert nchan == n_freq, "stim channels don't match"
+        nbins = nframes * upsample
+        spike_v = np.zeros((nbins, n_trials), dtype='i')
+        spike_h = np.zeros((nbins, n_taus, n_trials), dtype='d')
+        V_stim = strf.convolve(d["stim"], kernel)
+        spike_t = []
+        for i in range(n_trials):
+            V_tot = V_stim + np.random.randn(V_stim.size) * cf.data.trial_noise.sd
+            spikes = predict_spikes_glm(V_tot, cf.data.adaptation, cf)
+            spike_v[:, i] = spikes
+            spike_h[:, :, i] = mat.adaptation(spikes, cf.model.ataus, cf.model.dt)
+            spike_t.append(spikes.nonzero()[0])
+        d["spike_v"] = spike_v
+        d["spike_h"] = spike_h
+        d["spike_t"] = spike_t
+        d["spike_dt"] = cf.model.dt
+        d["V"] = V_tot
+
+    return data
+
+
 def univariate_noise_dynamical(cf, random_seed=None, trials=None):
     """Univariate white noise stimulus, biophysical model """
     stim_dt = cf.data.dt

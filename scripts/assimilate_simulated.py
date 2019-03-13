@@ -44,10 +44,17 @@ if __name__ == "__main__":
     spike_h = np.stack([d["H"] for d in assim_data], axis=2)
 
     print("starting ML estimation")
+    # this always fails on the first try for reasons I don't understand
     try:
         mlest = mle.mat(stim, kcosbas, spike_v, spike_h, stim_dt, model_dt, nlin="exp")
     except TypeError:
+        pass
+    krank = cf.model.filter.get("rank", None)
+    if krank is None:
         mlest = mle.mat(stim, kcosbas, spike_v, spike_h, stim_dt, model_dt, nlin="exp")
+    else:
+        mlest = mle.matfact(stim, kcosbas, krank, spike_v, spike_h, stim_dt, model_dt, nlin="exp")
+
     w0 = mlest.estimate(reg_alpha=1.0)
     print("MLE rate and adaptation parameters:", w0[:3])
 
@@ -100,7 +107,11 @@ if __name__ == "__main__":
     tspike_v = np.stack([d["spike_v"] for d in test_data], axis=1)
     tspike_h = np.stack([d["H"] for d in test_data], axis=2)
 
-    mltest = mle.mat(tstim, kcosbas, tspike_v, tspike_h, stim_dt, model_dt, nlin="exp")
+    if krank is None:
+        mltest = mle.mat(tstim, kcosbas, tspike_v, tspike_h, stim_dt, model_dt, nlin="exp")
+    else:
+        mltest = mle.matfact(tstim, kcosbas, krank, tspike_v, tspike_h, stim_dt, model_dt, nlin="exp")
+
     pred_spikes = np.zeros_like(tspike_v)
     samples = np.random.permutation(cf.emcee.nwalkers)[:cf.data.trials]
     for i, idx in enumerate(samples):
@@ -117,7 +128,7 @@ if __name__ == "__main__":
     cc = np.corrcoef(test_psth, pred_psth)[0, 1]
     print("CC: {}/{} = {}".format(cc, eo, cc / eo))
 
-    np.savez(outfile,
+    np.savez(args.outfile,
              astim=assim_data[0]["stim"], acurrent=assim_data[0]["I"], astate=assim_data[0]["state"], aspikes=spike_v,
              pos=pos, prob=prob, eo=eo, cc=cc,
              tstim=tstim, tcurrent=test_data[0]["I"], tstate=test_data[0]["state"], tspikes=tspike_v,

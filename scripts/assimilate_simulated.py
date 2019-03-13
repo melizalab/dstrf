@@ -32,8 +32,6 @@ if __name__ == "__main__":
         print("no function called {} in the simulation module".format(cf.data.source))
         sys.exit(-1)
 
-    model_name = os.path.splitext(os.path.basename(cf.data.dynamics.model))[0]
-
     model_dt = cf.model.dt
     stim_dt = cf.data.dt
     ncos = cf.model.filter.ncos
@@ -119,7 +117,6 @@ if __name__ == "__main__":
     cc = np.corrcoef(test_psth, pred_psth)[0, 1]
     print("CC: {}/{} = {}".format(cc, eo, cc / eo))
 
-    outfile = os.path.join("results", "{}_samples.npz".format(model_name))
     np.savez(outfile,
              astim=assim_data[0]["stim"], acurrent=assim_data[0]["I"], astate=assim_data[0]["state"], aspikes=spike_v,
              pos=pos, prob=prob, eo=eo, cc=cc,

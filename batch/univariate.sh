@@ -4,6 +4,6 @@
 export OMP_NUM_THREADS=1
 export THEANO_FLAGS="base_compiledir=/scratch/dmeliza/.theano"
 
-python scripts/glm_univariate_biocm_emcee.py config/univariate_posp.yml
-python scripts/glm_univariate_biocm_emcee.py config/univariate_tonic.yml
-python scripts/glm_univariate_biocm_emcee.py config/univariate_phasic.yml
+python scripts/assimilate_simulated.py config/univariate_posp.yml results/biocm_posp_samples.npz
+python scripts/assimilate_simulated.py config/univariate_tonic.yml results/biocm_tonic_samples.npz
+python scripts/assimilate_simulated.py config/univariate_phasic.yml results/biocm_phasic_samples.npz

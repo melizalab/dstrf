@@ -28,7 +28,7 @@ def gammadiff(tau1, tau2, amplitude, duration, dt):
     return (kg / np.linalg.norm(kg) * amplitude, tt)
 
 
-def strf(nfreq, ntau, f_max, f_peak, t_peak, ampl, f_sigma, t_sigma, f_alpha, t_alpha):
+def strf(nfreq, ntau, f_max, f_peak, t_peak, ampl, f_sigma, t_sigma, f_alpha, t_alpha, **kwargs):
     """Construct a parametric (mexican hat) STRF
 
     nfreq: resolution of the filter in pixels
@@ -59,7 +59,7 @@ def strf(nfreq, ntau, f_max, f_peak, t_peak, ampl, f_sigma, t_sigma, f_alpha, t_
     return Gtf, tscale, f
 
 
-def gabor(nfreq, ntau, f_max, f_peak, t_peak, ampl, f_sigma, t_sigma, theta, lmbda, psi):
+def gabor(nfreq, ntau, f_max, f_peak, t_peak, ampl, f_sigma, t_sigma, theta, lmbda, psi, **kwargs):
     """Construct a parametric (gabor) STRF
 
     nfreq: resolution of the filter in pixels
@@ -77,7 +77,7 @@ def gabor(nfreq, ntau, f_max, f_peak, t_peak, ampl, f_sigma, t_sigma, theta, lmb
     t = np.arange(float(np.negative(ntau)), 1)
     tscale = np.arange(np.negative(ntau), 1, 2)
     x = t_peak
-    f = np.arange(0, f_max + 1, float(f_max) / nfreq)
+    f = np.arange(0, f_max + 1, float(f_max) / nfreq)[:nfreq]
     y = f_peak
     tc = t + x
     fc = f - y

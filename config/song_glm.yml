@@ -6,10 +6,13 @@ model:
     rank: 2
     len: 30
     ncos: 8
+  prior:
+    l1: 1.0
+    l2: 1.0
 data:
   stimulus:
     source: "crcns"
-    root: "/home/data/crcns"
+    root: "/Users/dmeliza/Documents/projects/dstrf/crcns"
     cell: "blabla0903_2_B"
     stim_type: "conspecific"
     spectrogram:
@@ -40,9 +43,9 @@ data:
   trials: 10
   test_proportion: 0.2
 emcee:
-  nsteps: 20
+  nsteps: 10
   nthreads: 8
-  nwalkers: 100
+  nwalkers: 500
   startpos_scale: 2.0
 mat:
   bounds:

@@ -17,6 +17,8 @@ if __name__ == "__main__":
     import argparse
 
     p = argparse.ArgumentParser(description="sample from posterior of simulated dat")
+    p.add_argument("-l", type=float, help="override L2 penalty for regularization/prior")
+    p.add_argument("-a", type=float, help="override L1 penalty for regularization/prior")
     p.add_argument("config", help="path to configuration yaml file")
     p.add_argument("outfile", help="path to output npz file")
 
@@ -24,6 +26,11 @@ if __name__ == "__main__":
 
     with open(args.config, "rt") as fp:
         cf = Munch.fromYAML(fp)
+
+    if args.l is not None:
+        cf.model.prior.l2 = args.l
+    if args.a is not None:
+        cf.model.prior.l1 = args.l
 
     model_dt = cf.model.dt
     ncos = cf.model.filter.ncos
@@ -33,9 +40,19 @@ if __name__ == "__main__":
     stim_fun = getattr(stimulus, cf.data.stimulus.source)
     data     = stim_fun(cf)
 
+    p_test = cf.data.get("test_proportion", None)
+    if p_test is None:
+        assim_data = data
+        test_data  = stim_fun(cf, random_seed=1000)
+    else:
+        n_test = int(p_test * len(data))
+        print("reserving {} stimuli for test".format(n_test))
+        assim_data = data[:-n_test]
+        test_data = data[-n_test:]
+
     print("simulating response using {}".format(cf.data.model))
     data_fun = getattr(simulate, cf.data.model)
-    data = io.merge_data(data_fun(cf, data))
+    data = io.merge_data(data_fun(cf, assim_data))
     print("spike count: {}".format(data["spike_v"].sum()))
 
     # this always fails on the first try for reasons I don't understand
@@ -51,7 +68,18 @@ if __name__ == "__main__":
         print("starting ML estimation - rank={}".format(krank))
         mlest = mle.matfact(data["stim"], kcosbas, krank, data["spike_v"], data["spike_h"], data["stim_dt"], data["spike_dt"])
 
-    w0 = mlest.estimate(reg_alpha=cf.regularization.alpha, reg_lambda=cf.regularization.lmbda)
+    # prior on RF parameters
+    try:
+        rf_lambda = cf.model.prior.l1
+    except AttributeError:
+        rf_lambda = 0.0
+    try:
+        rf_alpha = cf.model.prior.l2
+    except AttributeError:
+        rf_alpha = 0.0
+
+    print("Regularization parameters: L1={}, L2={}".format(rf_alpha, rf_lambda))
+    w0 = mlest.estimate(reg_alpha=rf_alpha, reg_lambda=rf_lambda)
     print("MLE rate and adaptation parameters:", w0[:3])
 
     # estimate parameters using emcee
@@ -64,10 +92,6 @@ if __name__ == "__main__":
                                           priors.uniform(-5, 10)])
     # additional constraint to stay out of disallowed regio
     matboundprior = models.matbounds(cf.model.ataus[0], cf.model.ataus[1], cf.model.t_refract)
-
-    # lasso prior on RF parameters
-    rf_lambda = cf.regularization.lmbda
-    rf_alpha = cf.regularization.alpha
 
     def lnpost(theta):
         """Posterior probability"""
@@ -100,12 +124,8 @@ if __name__ == "__main__":
     theta = np.median(pos, 0)
     print("MAP rate and adaptation parameters:", theta[:3])
 
-    # simulate test data and posterior predictions
-    print("loading/generating stimuli for validation")
-    tdata     = stim_fun(cf, random_seed=1000)
-
-    print("simulating response using {}".format(cf.data.model))
-    tdata = io.merge_data(data_fun(cf, tdata, random_seed=1000))
+    print("simulating response for testing using {}".format(cf.data.model))
+    tdata = io.merge_data(data_fun(cf, test_data, random_seed=1000))
 
     # we use the estimator to generate predictions
     if krank is None:

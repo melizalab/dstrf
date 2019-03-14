@@ -4,13 +4,12 @@
 from __future__ import print_function, division
 
 import sys
-import os
 import numpy as np
 from munch import Munch
 import emcee
 
 from neurofit import priors, utils, startpos
-from dstrf import simulate, models, strf, mle, spikes, performance
+from dstrf import io, stimulus, simulate, models, strf, mle, spikes, performance
 
 
 if __name__ == "__main__":
@@ -26,36 +25,33 @@ if __name__ == "__main__":
     with open(args.config, "rt") as fp:
         cf = Munch.fromYAML(fp)
 
-    try:
-        data_fun = getattr(simulate, cf.data.source)
-    except AttributeError:
-        print("no function called {} in the simulation module".format(cf.data.source))
-        sys.exit(-1)
-
     model_dt = cf.model.dt
-    stim_dt = cf.data.dt
     ncos = cf.model.filter.ncos
     kcosbas = strf.cosbasis(cf.model.filter.len, ncos)
 
-    print("simulating data from {} function".format(cf.data.source))
-    assim_data = data_fun(cf)
-    stim = assim_data[0]["stim"]
-    spike_v = np.stack([d["spike_v"] for d in assim_data], axis=1)
-    spike_h = np.stack([d["H"] for d in assim_data], axis=2)
+    print("loading/generating stimuli")
+    stim_fun = getattr(stimulus, cf.data.stimulus.source)
+    data     = stim_fun(cf)
 
-    print("starting ML estimation")
+    print("simulating response using {}".format(cf.data.model))
+    data_fun = getattr(simulate, cf.data.model)
+    data = io.merge_data(data_fun(cf, data))
+    print("spike count: {}".format(data["spike_v"].sum()))
+
     # this always fails on the first try for reasons I don't understand
     try:
-        mlest = mle.mat(stim, kcosbas, spike_v, spike_h, stim_dt, model_dt, nlin="exp")
+        mlest = mle.mat(data["stim"], kcosbas, data["spike_v"], data["spike_h"], data["stim_dt"], data["spike_dt"])
     except TypeError:
         pass
     krank = cf.model.filter.get("rank", None)
     if krank is None:
-        mlest = mle.mat(stim, kcosbas, spike_v, spike_h, stim_dt, model_dt, nlin="exp")
+        print("starting ML estimation - full rank")
+        mlest = mle.mat(data["stim"], kcosbas, data["spike_v"], data["spike_h"], data["stim_dt"], data["spike_dt"])
     else:
-        mlest = mle.matfact(stim, kcosbas, krank, spike_v, spike_h, stim_dt, model_dt, nlin="exp")
+        print("starting ML estimation - rank={}".format(krank))
+        mlest = mle.matfact(data["stim"], kcosbas, krank, data["spike_v"], data["spike_h"], data["stim_dt"], data["spike_dt"])
 
-    w0 = mlest.estimate(reg_alpha=1.0)
+    w0 = mlest.estimate(reg_alpha=cf.regularization.alpha, reg_lambda=cf.regularization.lmbda)
     print("MLE rate and adaptation parameters:", w0[:3])
 
     # estimate parameters using emcee
@@ -70,7 +66,8 @@ if __name__ == "__main__":
     matboundprior = models.matbounds(cf.model.ataus[0], cf.model.ataus[1], cf.model.t_refract)
 
     # lasso prior on RF parameters
-    rf_lambda = 1.0
+    rf_lambda = cf.regularization.lmbda
+    rf_alpha = cf.regularization.alpha
 
     def lnpost(theta):
         """Posterior probability"""
@@ -81,7 +78,10 @@ if __name__ == "__main__":
         if not np.isfinite(lp):
             return -np.inf
         # mlest can do penalty for lambda
-        return lp - mlest.loglike(theta, rf_lambda)
+        ll = mlest.loglike(theta, rf_lambda, rf_alpha)
+        if not np.isfinite(ll):
+            return -np.inf
+        return lp - ll
 
     # initial state is a gaussian ball around the ML estimate
     p0 = startpos.normal_independent(cf.emcee.nwalkers, w0, np.abs(w0) * cf.emcee.startpos_scale)
@@ -101,17 +101,19 @@ if __name__ == "__main__":
     print("MAP rate and adaptation parameters:", theta[:3])
 
     # simulate test data and posterior predictions
-    print("simulating data for validation from {} function".format(cf.data.source))
-    test_data = data_fun(cf, random_seed=1000)
-    tstim = test_data[0]["stim"]
-    tspike_v = np.stack([d["spike_v"] for d in test_data], axis=1)
-    tspike_h = np.stack([d["H"] for d in test_data], axis=2)
+    print("loading/generating stimuli for validation")
+    tdata     = stim_fun(cf, random_seed=1000)
 
+    print("simulating response using {}".format(cf.data.model))
+    tdata = io.merge_data(data_fun(cf, tdata, random_seed=1000))
+
+    # we use the estimator to generate predictions
     if krank is None:
-        mltest = mle.mat(tstim, kcosbas, tspike_v, tspike_h, stim_dt, model_dt, nlin="exp")
+        mltest = mle.mat(tdata["stim"], kcosbas, tdata["spike_v"], tdata["spike_h"], tdata["stim_dt"], tdata["spike_dt"])
     else:
-        mltest = mle.matfact(tstim, kcosbas, krank, tspike_v, tspike_h, stim_dt, model_dt, nlin="exp")
+        mltest = mle.matfact(tdata["stim"], kcosbas, krank, tdata["spike_v"], tdata["spike_h"], tdata["stim_dt"], tdata["spike_dt"])
 
+    tspike_v = tdata["spike_v"]
     pred_spikes = np.zeros_like(tspike_v)
     samples = np.random.permutation(cf.emcee.nwalkers)[:cf.data.trials]
     for i, idx in enumerate(samples):
@@ -124,12 +126,14 @@ if __name__ == "__main__":
     test_psth = spikes.psth(tspike_v, upsample, 1)
     pred_psth = spikes.psth(pred_spikes, upsample, 1)
 
-    eo = performance.corrcoef(spike_v[::2], spike_v[1::2], upsample, 1)
+    eo = performance.corrcoef(tspike_v[::2], tspike_v[1::2], upsample, 1)
     cc = np.corrcoef(test_psth, pred_psth)[0, 1]
-    print("CC: {}/{} = {}".format(cc, eo, cc / eo))
+    print("EO cc: %3.3f" % eo)
+    print("pred cc: %3.3f" % cc)
+    print("spike count: data = {}, pred = {}".format(tspike_v.sum(), pred_spikes.sum()))
 
     np.savez(args.outfile,
-             astim=assim_data[0]["stim"], acurrent=assim_data[0]["I"], astate=assim_data[0]["state"], aspikes=spike_v,
+             astim=data["stim"], aspikes=data["spike_v"],
              pos=pos, prob=prob, eo=eo, cc=cc,
-             tstim=tstim, tcurrent=test_data[0]["I"], tstate=test_data[0]["state"], tspikes=tspike_v,
+             tstim=tdata["stim"], tspikes=tdata["spike_v"],
              pspikes=np.column_stack(pred_spikes))

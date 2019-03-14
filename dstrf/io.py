@@ -249,7 +249,7 @@ def merge_data(seq):
         raise ValueError("not all stimuli have the same number of trials")
 
     spike_v = np.concatenate([d["spike_v"] for d in seq], axis=0)
-    return {
+    data = {
         "stim_dt": stim_dt,
         "spike_dt": spike_dt,
         "ntrials": ntrials,
@@ -259,3 +259,7 @@ def merge_data(seq):
         "spike_h": np.concatenate([d["spike_h"] for d in seq], axis=0),
         "duration": sum(d["duration"] for d in seq),
     }
+    for key in ("V", "I"):
+        if key in seq[0]:
+            data[key] = np.concatenate([d[key] for d in seq], axis=0)
+    return data

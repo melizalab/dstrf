@@ -6,10 +6,17 @@ model:
     len: 60
     ncos: 8
 data:
-  source: "univariate_noise_dynamical"
+  stimulus:
+    source: "randn"
+    duration: 100000
   filter:
-    taus: [32.0, 16.0]
+    fn: "gammadiff"
+    tau1: 32.0
+    tau2: 16.0
     amplitude: 10.0
+    ntau: 60
+    dt: 10.0
+  model: "multivariate_dynamical"
   dynamics:
     model: "models/pospischil_sm.yml"
     current_scaling: 2.0
@@ -17,11 +24,13 @@ data:
     sd: 2.0
   random_seed: 1
   dt: 10.0
-  duration: 100000
   trials: 10
 spike_detect:
   thresh: -20.0
   rise_dt: 1.0
+regularization:
+  lmbda: 0
+  alpha: 1.0
 emcee:
   nsteps: 200
   nthreads: 8

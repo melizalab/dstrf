@@ -9,23 +9,28 @@ import numpy as np
 def exponential(tau, amplitude, duration, dt):
     """ An exponential decay with time constant tau """
     tt = np.arange(0, duration, dt)
-    return amplitude * 1 / tau * np.exp(-tt / tau), tt
+    ke = amplitude * 1 / tau * np.exp(-tt / tau)
+    return ke[::-1], -tt[::-1]
 
 
 def alpha(tau, amplitude, duration, dt):
     """An alpha function kernel with time constant tau"""
     tt = np.arange(0, duration, dt)
-    return (amplitude * tt / tau * np.exp(-tt / tau), tt)
+    ka = amplitude * tt / tau * np.exp(-tt / tau)
+    return (ka[::-1], -tt[::-1])
 
 
-def gammadiff(tau1, tau2, amplitude, duration, dt):
+def gammadiff(tau1, tau2, amplitude, ntau, dt, **kwargs):
     """ Difference of gamma function kernel """
     from scipy.special import gamma
-    tt = np.arange(0, duration, dt)
-    kg1 = 1 / (gamma(6) * tau1) * (tt / tau1)**5 * np.exp(-tt / tau1)
-    kg2 = 1 / (gamma(6) * tau2) * (tt / tau2)**5 * np.exp(-tt / tau2)
+    tt = np.arange(0, ntau * dt, dt)
+    xtau1 = ntau * dt / tau1
+    xtau2 = ntau * dt / tau2
+    kg1 = 1 / (gamma(6) * xtau1) * (tt / xtau1)**5 * np.exp(-tt / xtau1)
+    kg2 = 1 / (gamma(6) * xtau2) * (tt / xtau2)**5 * np.exp(-tt / xtau2)
     kg = kg1 - kg2 / 1.5
-    return (kg / np.linalg.norm(kg) * amplitude, tt)
+    kg *= amplitude / np.linalg.norm(kg)
+    return (kg[np.newaxis, ::-1], -tt[::-1])
 
 
 def strf(nfreq, ntau, f_max, f_peak, t_peak, ampl, f_sigma, t_sigma, f_alpha, t_alpha, **kwargs):

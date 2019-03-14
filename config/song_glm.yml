@@ -1,0 +1,54 @@
+model:
+  dt: 0.5
+  ataus: [10.0, 200.0]
+  t_refract: 2.0
+  filter:
+    rank: 2
+    len: 30
+    ncos: 8
+data:
+  stimulus:
+    source: "crcns"
+    root: "/home/data/crcns"
+    cell: "blabla0903_2_B"
+    stim_type: "conspecific"
+    spectrogram:
+      window: 4.0
+      compress: 10
+      f_min: 1000
+      f_max: 8000
+      gammatone: True
+  model: "multivariate_glm"
+  filter:
+    fn: "gabor"
+    nfreq: 14
+    ntau: 30
+    f_max: 8000
+    f_peak: 4000
+    t_peak: 12
+    ampl: -1
+    t_sigma: 6
+    f_sigma: 2400
+    theta: 0
+    lmbda: 19
+    psi: 1.5
+  adaptation: [7.0, 100.0, 2.0]
+  trial_noise:
+    sd: 2.0
+  random_seed: 1
+  dt: 10.0
+  trials: 10
+  test_proportion: 0.2
+emcee:
+  nsteps: 20
+  nthreads: 8
+  nwalkers: 100
+  startpos_scale: 2.0
+mat:
+  bounds:
+  - [0, 20]
+  - [-50, 200]
+  - [-5, 10]
+  model_dt: 0.5
+  nlin: exp
+  refract: 2.0

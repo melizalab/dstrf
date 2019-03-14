@@ -51,10 +51,14 @@ def elasticnet(estimator, n_splits, alphas, l1_ratios=0.5, **kwargs):
         for alpha in alphas:
             regargs = (alpha * l1r, alpha * (1 - l1r))
             try:
-                w, s = estimate_crossval(estimator, n_splits, regargs, w0=w, **kwargs)
+                w1, s = estimate_crossval(estimator, n_splits, regargs, w0=w, **kwargs)
             except Exception as e:
                 print("error: %s" % e)
                 w, s = [[0], -np.inf]
+            if np.isnan(s):
+                s = -np.inf
+            else:
+                w = w1
             yield (regargs, s, w)
 
 

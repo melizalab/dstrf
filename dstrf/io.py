@@ -8,7 +8,7 @@ import glob
 import json
 import toelis as tl
 import numpy as np
-
+import pandas as pd
 
 def load_crcns(cell, stim_type, root, window, step, **specargs):
     """Load stimulus and response data from CRCNS repository
@@ -67,6 +67,27 @@ def load_rothman_rf(cell, root):
     spikesroot = os.path.join(root, cell)
     rffile = np.load(os.path.join(spikesroot, "rf.npz"))
     return rffile['rf']
+
+
+def load_rothman_rf_params(cell, root, nfreq, ntau, f_max):
+    """Load RF parameters from simulation dataset; converts parameters to indices"""
+    df = pd.read_csv(os.path.join(root, cell, "filter_params.txt"), sep=":", header=None, index_col=0)
+    tconv = ntau / 0.05
+    fconv = float(nfreq / f_max)
+    conv = pd.Series({"t_peak": tconv,
+                      "f_peak": 1.0,
+                      "t_sigma": tconv,
+                      "f_sigma": fconv,
+                      "t_omega": 1. / tconv,
+                      "f_omega": 1. / fconv,
+                      "Pt": 1.0})
+    return df.rename(index={"Latency": "t_peak",
+                            "Frequency": "f_peak",
+                            "Sigma-t": "t_sigma",
+                            "Omega-t": "t_omega",
+                            "Sigma-f": "f_sigma",
+                            "Omega-f": "f_omega",
+                            "Pt": "Pt"})[0] * conv
 
 
 

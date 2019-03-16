@@ -2,6 +2,8 @@ emcee==2.2.1
 Theano
 numpy
 scipy
+pandas
+scikit-learn
 matplotlib
 ipykernel
 notebook

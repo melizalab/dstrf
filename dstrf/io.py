@@ -49,15 +49,16 @@ def load_rothman(cell, root, window, step, load_internals=False, **specargs):
             spks = f.strip().split()
             spikes.append(np.asarray(spks, dtype='d'))
         celldata = {"cell_name": cell,
-             "stim_name": stim,
-             "duration": dur,
-             "stim": spec,
-             "stim_dt": step,
-             "spikes": spikes}
+                    "stim_name": stim,
+                    "duration": dur,
+                    "stim": spec,
+                    "stim_dt": step,
+                    "spikes": spikes}
         if load_internals:
             npzfile = "stim{}.npz".format(stim_idx)
             npzdata = np.load(os.path.join(root, cell, npzfile))
             celldata["I"] = npzdata['conv']
+            celldata["V"] = npzdata['volt'][0]
         out.append(celldata)
     return out
 

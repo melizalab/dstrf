@@ -64,12 +64,34 @@ def strf(nfreq, ntau, f_max, f_peak, t_peak, ampl, f_sigma, t_sigma, f_alpha, t_
     return Gtf, tscale, f
 
 
-def hg(nfreq, ntau, f_max, f_peak, t_peak, ampl, t_sigma, f_sigma, t_omega, f_omega, Pt, Pf, **kwargs):
-    t = np.arange(0, ntau)
-    tscale = np.arange(np.negative(ntau), 1, 2)
-    x = t_peak
+def hg(nfreq, ntau, f_max, f_peak, t_max, t_peak, ampl, t_sigma, f_sigma, t_omega, f_omega, Pt, Pf, **kwargs):
+    """Construct an unrotated gabor STRF
+
+    nfreq: number of frequency channels in the filter
+    ntau: number of time points in the filter
+    f_max: maximum frequency of the signal (in Hz)
+    f_peak: center frequency for the filter (in Hz)
+    t_max: duration of the filter (in ms)
+    t_peak: offset between stimulus and response in ms (range: 0 to -t_max)
+    ampl:   amplitude of the wavelet peak
+    t_sigma: width of the filter in the time axis (in ms)
+    f_sigma: width of the filter in the frequency axis (in Hz)
+    t_omega: temporal modulation frequency
+    f_omega: spectral modulation frequency
+    Pt: temporal phase
+    Pf: spectral phase
+    Returns the RF (nfreq, ntau), tau (ntau,), and f (nfreq,)
+    """
+    dt = ntau / t_max
+    df = nfreq / f_max
+    t_sigma *= dt
+    t_omega /= dt
+    f_sigma *= df
+    f_omega /= df
+    t = np.arange(0, ntau) * dt
+    x = t_peak * dt
     f = np.arange(0, nfreq)
-    y = float(f_peak / f_max * nfreq)
+    y = f_peak * df
     tc = t + x
     fc = f - y
     tprime, fprime = np.meshgrid(tc, fc)
@@ -77,7 +99,7 @@ def hg(nfreq, ntau, f_max, f_peak, t_peak, ampl, t_sigma, f_sigma, t_omega, f_om
     G = np.exp(-0.5 * ((fprime) / f_sigma)**2) * np.cos(2 * np.pi * f_omega * (fprime) + Pf)
     strf = H * G
     strf /= np.sqrt(np.trapz(np.trapz(strf**2, axis=1)))
-    return np.fliplr(ampl * strf), tscale, f
+    return np.fliplr(ampl * strf), -t[::-1], f
 
 
 def gabor(nfreq, ntau, f_max, f_peak, t_peak, ampl, f_sigma, t_sigma, theta, lmbda, psi, **kwargs):

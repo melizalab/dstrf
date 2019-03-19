@@ -88,7 +88,7 @@ def hg(nfreq, ntau, f_max, f_peak, t_max, t_peak, ampl, t_sigma, f_sigma, t_omeg
     t_omega /= dt
     f_sigma *= df
     f_omega /= df
-    t = np.arange(0, ntau) * dt
+    t = np.arange(0, ntau) / dt
     x = t_peak * dt
     f = np.arange(0, nfreq)
     y = f_peak * df

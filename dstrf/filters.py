@@ -99,7 +99,7 @@ def hg(nfreq, ntau, f_max, f_peak, t_max, t_peak, ampl, t_sigma, f_sigma, t_omeg
     G = np.exp(-0.5 * ((fprime) / f_sigma)**2) * np.cos(2 * np.pi * f_omega * (fprime) + Pf)
     strf = H * G
     strf /= np.sqrt(np.trapz(np.trapz(strf**2, axis=1)))
-    return np.fliplr(ampl * strf), -t[::-1], f
+    return np.fliplr(ampl * strf), -t[::-1], f / df
 
 
 def gabor(nfreq, ntau, f_max, f_peak, t_peak, ampl, f_sigma, t_sigma, theta, lmbda, psi, **kwargs):

@@ -57,7 +57,7 @@ def load_rothman(cell, root, window, step, load_internals=False, **specargs):
         if load_internals:
             npzfile = "stim{}.npz".format(stim_idx)
             npzdata = np.load(os.path.join(root, cell, npzfile))
-            celldata["I"] = npzdata['conv']
+            celldata["I"] = npzdata['noisyconv'][0]
             celldata["V"] = npzdata['volt'][0]
         out.append(celldata)
     return out
@@ -70,26 +70,24 @@ def load_rothman_rf(cell, root):
     return rffile['rf']
 
 
-def load_rothman_rf_params(cell, root, nfreq, ntau, f_max):
-    """Load RF parameters from simulation dataset; converts parameters to indices"""
-    df = pd.read_csv(os.path.join(root, cell, "filter_params.txt"), sep=":", header=None, index_col=0)
-    tconv = ntau / 0.05
-    fconv = float(nfreq / f_max)
-    conv = pd.Series({"t_peak": tconv,
-                      "f_peak": 1.0,
-                      "t_sigma": tconv,
-                      "f_sigma": fconv,
-                      "t_omega": 1. / tconv,
-                      "f_omega": 1. / fconv,
-                      "Pt": 1.0})
-    return df.rename(index={"Latency": "t_peak",
-                            "Frequency": "f_peak",
-                            "Sigma-t": "t_sigma",
-                            "Omega-t": "t_omega",
-                            "Sigma-f": "f_sigma",
-                            "Omega-f": "f_omega",
-                            "Pt": "Pt"})[0] * conv
-
+def load_rothman_rf_params(cell, root):
+    """Load RF parameters from simulation dataset. Output can be passed to filters.hg"""
+    df = (pd.read_csv(os.path.join(root, cell, "filter_params.txt"), sep=":", header=None, index_col=0)
+            .rename(index={"Latency": "t_peak",
+                           "Frequency": "f_peak",
+                           "Sigma-t": "t_sigma",
+                           "Omega-t": "t_omega",
+                           "Sigma-f": "f_sigma",
+                           "Omega-f": "f_omega",
+                           "Pt": "Pt"}).iloc[:, 0])
+    # convert s to ms and Hz to kHz
+    df["t_peak"] *= 1000
+    df["t_sigma"] *= 1000
+    df["t_omega"] /= 1000
+    df["f_peak"] /= 1000
+    df["f_sigma"] /= 1000
+    df["f_omega"] *= 1000
+    return df
 
 
 def load_neurobank(cell, window, step, **specargs):

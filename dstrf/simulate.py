@@ -12,6 +12,23 @@ from dstrf import filters, strf
 import spyks.core as spkc
 
 
+def whitenoise(N):
+    return np.random.randn(N)
+
+
+def pinknoise(N):
+    """ Generate N samples of pink noise (1/f power spectrum) """
+    from numpy.fft import irfft
+    uneven = N % 2
+    X = np.random.randn(N // 2 + 1 + uneven) + 1j * \
+        np.random.randn(N // 2 + 1 + uneven)
+    S = np.sqrt(np.arange(len(X)) + 1.)
+    y = (irfft(X / S)).real
+    if uneven:
+        y = y[:-1]
+    return y / np.sqrt((y ** 2).mean())
+
+
 def multivariate_glm(cf, data, random_seed=None, trials=None):
     """Simulate GLM response to multivariate stimuli. Note: modifies data in place"""
     from .models import predict_spikes_glm
@@ -29,6 +46,13 @@ def multivariate_glm(cf, data, random_seed=None, trials=None):
     np.random.seed(random_seed or cf.data.random_seed)
     mat.random_seed(random_seed or cf.data.random_seed)
 
+    noise_type = cf.data.trial_noise.get("color", "white")
+    # fix dispatch
+    if noise_type == "pink":
+        noise_fun = pinknoise
+    else:
+        noise_fun = whitenoise
+
     for d in data:
         nchan, nframes = d["stim"].shape
         assert nchan == n_freq, "stim channels don't match"
@@ -38,7 +62,7 @@ def multivariate_glm(cf, data, random_seed=None, trials=None):
         V_stim = strf.convolve(d["stim"], kernel)
         spike_t = []
         for i in range(n_trials):
-            V_tot = V_stim + np.random.randn(V_stim.size) * cf.data.trial_noise.sd
+            V_tot = V_stim + noise_fun(V_stim.size) * cf.data.trial_noise.sd
             spikes = predict_spikes_glm(V_tot, cf.data.adaptation, cf)
             spike_v[:, i] = spikes
             spike_h[:, :, i] = mat.adaptation(spikes, cf.model.ataus, cf.model.dt)
@@ -75,6 +99,13 @@ def multivariate_dynamical(cf, data, random_seed=None, trials=None):
     np.random.seed(random_seed or cf.data.random_seed)
     mat.random_seed(random_seed or cf.data.random_seed)
 
+    noise_type = cf.data.trial_noise.get("color", "white")
+    # fix dispatch
+    if noise_type == "pink":
+        noise_fun = pinknoise
+    else:
+        noise_fun = whitenoise
+
     for d in data:
         nchan, nframes = d["stim"].shape
         assert nchan == n_freq, "stim channels don't match"
@@ -84,7 +115,7 @@ def multivariate_dynamical(cf, data, random_seed=None, trials=None):
         I_stim = strf.convolve(d["stim"], kernel)
         spike_t = []
         for i in range(n_trials):
-            I_noise = np.random.randn(I_stim.size) * cf.data.trial_noise.sd
+            I_noise = noise_fun(I_stim.size) * cf.data.trial_noise.sd
             I_tot = (I_stim + I_noise) * cf.data.dynamics.current_scaling
             X = biocm_model.integrate(biocm_params, biocm_state0, I_tot, cf.data.dt, cf.model.dt)
             det = qs.detector(cf.spike_detect.thresh, det_rise_time)

@@ -10,6 +10,7 @@ import toelis as tl
 import numpy as np
 import pandas as pd
 
+
 def load_crcns(cell, stim_type, root, window, step, **specargs):
     """Load stimulus and response data from CRCNS repository
 
@@ -81,6 +82,55 @@ def load_rothman_rf_params(cell, root):
                            "Omega-f": "f_omega",
                            "Pt": "Pt"}).iloc[:, 0])
     # convert s to ms and Hz to kHz
+    df["t_peak"] *= -1000
+    df["t_sigma"] *= 1000
+    df["t_omega"] /= 1000
+    df["f_peak"] /= 1000
+    df["f_sigma"] /= 1000
+    df["f_omega"] *= 1000
+    return df
+
+
+def load_dstrf_sim(cell, root, window, step, **specargs):
+    """Load stimulus and response from dstrf_sim repository"""
+    import itertools
+    import operator
+    stimkey = operator.itemgetter("stimulus")
+
+    stimroot = os.path.join(root, "stim_bank")
+    respfile = os.path.join(root, "spike_data", cell) + ".json"
+    out = []
+    with open(respfile, "rt") as fp:
+        data = json.load(fp)
+        evsorted = sorted(data['pprox'], key=stimkey)
+        for stim, trials in itertools.groupby(evsorted, stimkey):
+            stimfile = stim + ".wav"
+            spec, dur = load_stimulus(os.path.join(stimroot, stimfile), window, step, **specargs)
+            out.append({"cell_name": cell,
+                        "stim_name": stim,
+                        "duration": dur,
+                        "stim": spec,
+                        "stim_dt": step,
+                        "spikes": [np.asarray(trial['events'], dtype='d') * 1000 for trial in trials]})
+        return out
+
+
+def load_dstrf_rf_params(cell, root):
+    """ Load RF parameters from simulation dataset """
+    columns = ["Model", "RF"]
+    colmap = {"Latency": "t_peak",
+              "Freq": "f_peak",
+              "SigmaT": "t_sigma",
+              "OmegaT": "t_omega",
+              "SigmaF": "f_sigma",
+              "OmegaF": "f_omega",
+              "Pt": "Pt"}
+    columns.extend(colmap.keys())
+    _, model, rf = cell.split("-")
+    df = (pd.read_csv(os.path.join(root, "summary_table.csv"), usecols=columns, index_col=[0, 1])
+            .rename(columns=colmap)
+            .loc[model, int(rf)])
+    # convert s to ms and Hz to kHz
     df["t_peak"] *= 1000
     df["t_sigma"] *= 1000
     df["t_omega"] /= 1000
@@ -99,7 +149,7 @@ def load_neurobank(cell, window, step, **specargs):
     out = []
     with open(unitfile, 'rU') as fp:
         data = json.load(fp)
-        trials = sorted(data['pprox'], key = lambda x: (x['stimulus'], x['trial']))
+        trials = sorted(data['pprox'], key=lambda x: (x['stimulus'], x['trial']))
         for stimname, trials in itertools.groupby(trials, lambda x: x['stimulus']):
             try:
                 stimfile = next(find(stimname, local_only=True))
@@ -117,7 +167,7 @@ def load_neurobank(cell, window, step, **specargs):
 
 
 def load_stimulus(path, window, step, f_min=0.5, f_max=8.0, f_count=30,
-                  compress=1, gammatone=False):
+                  compress=1, gammatone=False, **kwargs):
     """Load sound stimulus and calculate spectrotemporal representation.
 
     Parameters:

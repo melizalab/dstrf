@@ -72,7 +72,7 @@ def hg(nfreq, ntau, f_max, f_peak, t_max, t_peak, ampl, t_sigma, f_sigma, t_omeg
     f_max: maximum frequency of the signal (in Hz)
     f_peak: center frequency for the filter (in Hz)
     t_max: duration of the filter (in ms)
-    t_peak: offset between stimulus and response in ms (range: 0 to -t_max)
+    t_peak: offset between stimulus and response in ms (range: 0 to t_max)
     ampl:   amplitude of the wavelet peak
     t_sigma: width of the filter in the time axis (in ms)
     f_sigma: width of the filter in the frequency axis (in Hz)
@@ -92,7 +92,7 @@ def hg(nfreq, ntau, f_max, f_peak, t_max, t_peak, ampl, t_sigma, f_sigma, t_omeg
     x = t_peak * dt
     f = np.arange(0, nfreq)
     y = f_peak * df
-    tc = t + x
+    tc = t - x
     fc = f - y
     tprime, fprime = np.meshgrid(tc, fc)
     H = np.exp(-0.5 * ((tprime) / t_sigma)**2) * np.cos(2 * np.pi * t_omega * (tprime) + Pt)

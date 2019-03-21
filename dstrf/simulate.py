@@ -94,7 +94,7 @@ def multivariate_dynamical(cf, data, random_seed=None, trials=None):
     biocm_params = spkc.to_array(pymodel["parameters"])
     biocm_state0 = spkc.to_array(pymodel["state"])
     biocm_model = spkc.load_module(pymodel, os.path.dirname(cf.data.dynamics.model))
-    print(" - dynamical model: {}". format(cf.data.dynamics.model))
+    print(" - dynamical model: {}".format(cf.data.dynamics.model))
 
     np.random.seed(random_seed or cf.data.random_seed)
     mat.random_seed(random_seed or cf.data.random_seed)
@@ -113,9 +113,16 @@ def multivariate_dynamical(cf, data, random_seed=None, trials=None):
         spike_v = np.zeros((nbins, n_trials), dtype='i')
         spike_h = np.zeros((nbins, n_taus, n_trials), dtype='d')
         I_stim = strf.convolve(d["stim"], kernel)
+        # normalization is based on Margot's paper
+        I_stim *= 17 * cf.data.filter.f_sigma
+        I_var = np.var(I_stim)
         spike_t = []
         for i in range(n_trials):
-            I_noise = noise_fun(I_stim.size) * cf.data.trial_noise.sd
+            I_noise = noise_fun(I_stim.size)
+            snr = cf.data.trial_noise.get("snr", None)
+            if snr:
+                I_noise *= np.sqrt(I_var / snr / np.var(I_noise))
+            # I_noise *= cf.data.trial_noise.sd
             I_tot = (I_stim + I_noise) * cf.data.dynamics.current_scaling
             X = biocm_model.integrate(biocm_params, biocm_state0, I_tot, cf.data.dt, cf.model.dt)
             det = qs.detector(cf.spike_detect.thresh, det_rise_time)

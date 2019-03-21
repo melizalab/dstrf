@@ -5,6 +5,9 @@ model:
   filter:
     len: 60
     ncos: 8
+  prior:
+    l1: 0.0
+    l2: 0.0
 data:
   stimulus:
     source: "randn"
@@ -24,9 +27,6 @@ data:
   random_seed: 1
   dt: 10.0
   trials: 5
-regularization:
-  lmbda: 0
-  alpha: 0
 emcee:
   nsteps: 200
   nthreads: 8

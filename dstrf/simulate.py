@@ -60,9 +60,15 @@ def multivariate_glm(cf, data, random_seed=None, trials=None):
         spike_v = np.zeros((nbins, n_trials), dtype='i')
         spike_h = np.zeros((nbins, n_taus, n_trials), dtype='d')
         V_stim = strf.convolve(d["stim"], kernel)
+        V_var = np.var(V_stim)
         spike_t = []
         for i in range(n_trials):
-            V_tot = V_stim + noise_fun(V_stim.size) * cf.data.trial_noise.sd
+            V_noise = noise_fun(V_stim.size)
+            snr = cf.data.trial_noise.get("snr", None)
+            if snr:
+                V_noise *= np.sqrt(V_var / snr / np.var(V_noise))
+            # I_noise *= cf.data.trial_noise.sd
+            V_tot = V_stim + V_noise
             spikes = predict_spikes_glm(V_tot, cf.data.adaptation, cf)
             spike_v[:, i] = spikes
             spike_h[:, :, i] = mat.adaptation(spikes, cf.model.ataus, cf.model.dt)
@@ -114,7 +120,8 @@ def multivariate_dynamical(cf, data, random_seed=None, trials=None):
         spike_h = np.zeros((nbins, n_taus, n_trials), dtype='d')
         I_stim = strf.convolve(d["stim"], kernel)
         # normalization is based on Margot's paper
-        I_stim *= 17 * cf.data.filter.f_sigma
+        if "f_sigma" in cf.data.filter:
+            I_stim *= 17 * cf.data.filter.f_sigma
         I_var = np.var(I_stim)
         spike_t = []
         for i in range(n_trials):

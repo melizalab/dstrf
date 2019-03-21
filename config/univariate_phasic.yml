@@ -24,7 +24,7 @@ data:
     model: "models/biocm_phasic.yml"
     current_scaling: 9.0
   trial_noise:
-    sd: 2.0
+    snr: 2.0
   random_seed: 1
   dt: 10.0
   trials: 10

@@ -25,6 +25,7 @@ class mat(object):
         import scipy.sparse as sps
         from dstrf.strf import lagged_matrix
         self.dtype = config.floatX
+        # this is needed to prevent compiler errors in clang
         config.gcc.cxxflags = "-Wno-c++11-narrowing"
 
         if stim.ndim == 1:
@@ -52,6 +53,10 @@ class mat(object):
                                 format='csc')
         self.select_data()
         self._make_functions()
+
+    @property
+    def spikes(self):
+        return self._spikes
 
     @property
     def X_stim(self):

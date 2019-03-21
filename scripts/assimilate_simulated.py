@@ -6,10 +6,8 @@ from __future__ import print_function, division
 import sys
 import numpy as np
 from munch import Munch
-import emcee
 
-from neurofit import priors, utils, startpos
-from dstrf import io, stimulus, simulate, models, strf, mle, spikes, performance
+from dstrf import io, stimulus, simulate, models, strf, mle
 
 
 def xvalidate(mlest, cf):
@@ -38,6 +36,9 @@ def xvalidate(mlest, cf):
 
 def mcmc(mlest, cf):
     """ Sample from posterior of the model using MCMC """
+    import emcee
+    from neurofit import priors, utils, startpos
+
     if sys.platform == 'darwin':
         cf.emcee.nthreads = 1
 
@@ -89,7 +90,6 @@ if __name__ == "__main__":
     p.add_argument("outfile", help="path to output npz file")
 
     args = p.parse_args()
-
     with open(args.config, "rt") as fp:
         cf = Munch.fromYAML(fp)
 
@@ -107,9 +107,8 @@ if __name__ == "__main__":
         test_data  = stim_fun(cf, random_seed=1000)
     else:
         n_test = int(p_test * len(data))
-        print("reserving {} stimuli for test".format(n_test))
+        print("reserving last {} stimuli for test".format(n_test))
         assim_data = data[:-n_test]
-        test_data = data[-n_test:]
 
     print("simulating response using {}".format(cf.data.model))
     data_fun = getattr(simulate, cf.data.model)
@@ -160,7 +159,7 @@ if __name__ == "__main__":
         print("lnpost of p median: {}".format(np.median(prob)))
         w0 = np.median(pos, 0)
         print("MAP rate and adaptation parameters:", w0[:3])
-        out["pos"] = pos
+        out["samples"] = pos
         out["prob"] = prob
 
     if args.save_data:

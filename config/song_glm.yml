@@ -46,14 +46,12 @@ data:
   trials: 10
   test_proportion: 0.2
 emcee:
-  nsteps: 10
+  nsteps: 200
   nthreads: 8
-  nwalkers: 500
+  nwalkers: 1000
   startpos_scale: 2.0
 mat:
   bounds:
   - [0, 20]
   - [-50, 200]
   - [-5, 10]
-  model_dt: 0.5
-  nlin: exp

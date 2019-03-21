@@ -34,15 +34,12 @@ data:
   dt: 10.0
   trials: 5
 emcee:
-  nsteps: 20
+  nsteps: 200
   nthreads: 8
-  nwalkers: 100
+  nwalkers: 1000
   startpos_scale: 2.0
 mat:
   bounds:
   - [0, 20]
   - [-50, 200]
   - [-5, 10]
-  model_dt: 0.5
-  nlin: exp
-  refract: 2.0

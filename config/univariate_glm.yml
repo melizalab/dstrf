@@ -37,6 +37,3 @@ mat:
   - [0, 20]
   - [-50, 200]
   - [-5, 10]
-  model_dt: 0.5
-  nlin: exp
-  refract: 2.0

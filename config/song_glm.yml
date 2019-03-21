@@ -46,11 +46,10 @@ data:
   trials: 10
   test_proportion: 0.2
 emcee:
-  nsteps: 200
+  nsteps: 10
   nthreads: 8
   nwalkers: 1000
   startpos_scale: 2.0
-mat:
   bounds:
   - [0, 20]
   - [-50, 200]

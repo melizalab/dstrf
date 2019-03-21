@@ -36,7 +36,6 @@ emcee:
   nthreads: 8
   nwalkers: 500
   startpos_scale: 2.0
-mat:
   bounds:
   - [0, 20]
   - [-50, 200]

@@ -87,10 +87,8 @@ if __name__ == "__main__":
         cf.emcee.nthreads = 1
 
     # set up priors - base rate and adaptation
-    mat_prior = priors.joint_independent([priors.uniform(0, 20),
-                                          priors.uniform(-50, 200),
-                                          priors.uniform(-5, 10)])
-    # additional constraint to stay out of disallowed regio
+    mat_prior = priors.joint_independent([priors.uniform(l, u) for (l, u) in cf.emcee.bounds])
+    # additional constraint to stay out of disallowed region
     matboundprior = models.matbounds(cf.model.ataus[0], cf.model.ataus[1], cf.model.t_refract)
 
     def lnpost(theta):

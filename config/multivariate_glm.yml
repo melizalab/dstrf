@@ -33,6 +33,12 @@ data:
   random_seed: 1
   dt: 10.0
   trials: 5
+xvalidate:
+  grid:
+    lower: -1
+    upper: 5
+    count: 20
+  l1_ratios: [0.1, 0.5, 0.7, 0.9, 0.95]
 emcee:
   nsteps: 200
   nthreads: 8

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # -*- mode: python -*-
-""" This script will do a full emcee estimate from simulated data """
+""" This script will do assimilation from simulated data """
 from __future__ import print_function, division
 
 import sys
@@ -12,13 +12,79 @@ from neurofit import priors, utils, startpos
 from dstrf import io, stimulus, simulate, models, strf, mle, spikes, performance
 
 
+def xvalidate(mlest, cf):
+    """ Use cross-validation to find optimial l1 and l2 regularization params
+
+    - mlest: initialized maximum likelihood estimator
+    - cf: configuration Munch
+
+    Returns (rf_alpha, rf_lambda), loglike, best_params
+    """
+    from dstrf import crossvalidate
+
+    l1_ratios = cf.xvalidate.l1_ratios
+    reg_grid = np.logspace(cf.xvalidate.grid.lower, cf.xvalidate.grid.upper, cf.xvalidate.grid.count)[::-1]
+    scores = []
+    results = []
+
+    for reg, s, w in crossvalidate.elasticnet(mlest, 4, reg_grid, l1_ratios, avextol=1e-5, disp=False):
+        scores.append(s)
+        results.append((reg, s, w))
+        print(" - alpha={:.2}, lambda={:.2}: {}".format(reg[0], reg[1], s))
+
+    best_idx = np.argmax(scores)
+    return results[best_idx]
+
+
+def mcmc(mlest, cf):
+    """ Sample from posterior of the model using MCMC """
+    if sys.platform == 'darwin':
+        cf.emcee.nthreads = 1
+
+    # set up priors - base rate and adaptation
+    mat_prior = priors.joint_independent([priors.uniform(l, u) for (l, u) in cf.emcee.bounds])
+    # additional constraint to stay out of disallowed region
+    matboundprior = models.matbounds(cf.model.ataus[0], cf.model.ataus[1], cf.model.t_refract)
+
+    def lnpost(theta):
+        """Posterior probability"""
+        mparams = theta[:3]
+        if not matboundprior(mparams):
+            return -np.inf
+        lp = mat_prior(mparams)
+        if not np.isfinite(lp):
+            return -np.inf
+        # mlest can do penalty for lambda
+        ll = mlest.loglike(theta, rf_lambda, rf_alpha)
+        if not np.isfinite(ll):
+            return -np.inf
+        return lp - ll
+
+    # initial state is a gaussian ball around the ML estimate
+    p0 = startpos.normal_independent(cf.emcee.nwalkers, w0, np.abs(w0) * cf.emcee.startpos_scale)
+    theta_0 = np.median(p0, 0)
+    print("lnpost of p0 median: {}".format(lnpost(theta_0)))
+
+    sampler = emcee.EnsembleSampler(cf.emcee.nwalkers, w0.size, lnpost,
+                                    threads=cf.emcee.nthreads)
+    tracker = utils.convergence_tracker(cf.emcee.nsteps, 25)
+
+    for pos, prob, _ in tracker(sampler.sample(p0, iterations=cf.emcee.nsteps)):
+        continue
+
+    print("average acceptance fraction: {:.2%}".format(sampler.acceptance_fraction.mean()))
+    return pos, prob
+
+
 if __name__ == "__main__":
 
     import argparse
 
     p = argparse.ArgumentParser(description="sample from posterior of simulated dat")
-    p.add_argument("-l", type=float, help="override L2 penalty for regularization/prior")
-    p.add_argument("-a", type=float, help="override L1 penalty for regularization/prior")
+    p.add_argument("--prior-from", "-p", help="load regularization/prior params from output of previous run")
+    p.add_argument("--xval", "-x", action="store_true", help="use cross-validation to optimize regularization params")
+    p.add_argument("--mcmc", "-m", action="store_true", help="use MCMC to sample from posterior distribution")
+    p.add_argument("--save-data", action="store_true", help="store assimilation data in output file")
     p.add_argument("config", help="path to configuration yaml file")
     p.add_argument("outfile", help="path to output npz file")
 
@@ -26,11 +92,6 @@ if __name__ == "__main__":
 
     with open(args.config, "rt") as fp:
         cf = Munch.fromYAML(fp)
-
-    if args.l is not None:
-        cf.model.prior.l2 = args.l
-    if args.a is not None:
-        cf.model.prior.l1 = args.l
 
     model_dt = cf.model.dt
     ncos = cf.model.filter.ncos
@@ -77,81 +138,33 @@ if __name__ == "__main__":
         rf_alpha = cf.model.prior.l2
     except AttributeError:
         rf_alpha = 0.0
+    if args.prior_from:
+        results = np.load(args.prior_from)
+        rf_lambda = results["rf_lambda"]
+        rf_alpha = results["rf_alpha"]
 
-    print("Regularization parameters: L1={}, L2={}".format(rf_alpha, rf_lambda))
-    w0 = mlest.estimate(reg_alpha=rf_alpha, reg_lambda=rf_lambda)
-    print("MLE rate and adaptation parameters:", w0[:3])
-
-    # estimate parameters using emcee
-    if sys.platform == 'darwin':
-        cf.emcee.nthreads = 1
-
-    # set up priors - base rate and adaptation
-    mat_prior = priors.joint_independent([priors.uniform(l, u) for (l, u) in cf.emcee.bounds])
-    # additional constraint to stay out of disallowed region
-    matboundprior = models.matbounds(cf.model.ataus[0], cf.model.ataus[1], cf.model.t_refract)
-
-    def lnpost(theta):
-        """Posterior probability"""
-        mparams = theta[:3]
-        if not matboundprior(mparams):
-            return -np.inf
-        lp = mat_prior(mparams)
-        if not np.isfinite(lp):
-            return -np.inf
-        # mlest can do penalty for lambda
-        ll = mlest.loglike(theta, rf_lambda, rf_alpha)
-        if not np.isfinite(ll):
-            return -np.inf
-        return lp - ll
-
-    # initial state is a gaussian ball around the ML estimate
-    p0 = startpos.normal_independent(cf.emcee.nwalkers, w0, np.abs(w0) * cf.emcee.startpos_scale)
-    theta_0 = np.median(p0, 0)
-    print("lnpost of p0 median: {}".format(lnpost(theta_0)))
-
-    sampler = emcee.EnsembleSampler(cf.emcee.nwalkers, w0.size, lnpost,
-                                    threads=cf.emcee.nthreads)
-    tracker = utils.convergence_tracker(cf.emcee.nsteps, 25)
-
-    for pos, prob, _ in tracker(sampler.sample(p0, iterations=cf.emcee.nsteps)):
-        continue
-
-    print("lnpost of p median: {}".format(np.median(prob)))
-    print("average acceptance fraction: {}".format(sampler.acceptance_fraction.mean()))
-    theta = np.median(pos, 0)
-    print("MAP rate and adaptation parameters:", theta[:3])
-
-    print("simulating response for testing using {}".format(cf.data.model))
-    tdata = io.merge_data(data_fun(cf, test_data, random_seed=1000))
-
-    # we use the estimator to generate predictions
-    if krank is None:
-        mltest = mle.mat(tdata["stim"], kcosbas, tdata["spike_v"], tdata["spike_h"], tdata["stim_dt"], tdata["spike_dt"])
+    if args.xval:
+        print("cross-validating to find optimal regularization parameters")
+        (rf_alpha, rf_lambda), loglike, w0 = xvalidate(mlest, cf)
+        print("best regularization params: alpha={:.2}, lambda={:.2}".format(rf_alpha, rf_lambda))
+        print("MLE rate and adaptation parameters:", w0[:3])
     else:
-        mltest = mle.matfact(tdata["stim"], kcosbas, krank, tdata["spike_v"], tdata["spike_h"], tdata["stim_dt"], tdata["spike_dt"])
+        print("Regularization parameters: L1={:.2}, L2={:.2}".format(rf_alpha, rf_lambda))
+        w0 = mlest.estimate(reg_alpha=rf_alpha, reg_lambda=rf_lambda)
+        print("MLE rate and adaptation parameters:", w0[:3])
 
-    tspike_v = tdata["spike_v"]
-    pred_spikes = np.zeros_like(tspike_v)
-    samples = np.random.permutation(cf.emcee.nwalkers)[:cf.data.trials]
-    for i, idx in enumerate(samples):
-        sample = pos[idx]
-        V = mltest.V(sample)
-        S = models.predict_spikes_glm(V, sample[:3], cf)
-        pred_spikes[:, i] = S
+    out = {"mle": w0, "reg_alpha": rf_alpha, "reg_lambda": rf_lambda}
+    if args.mcmc:
+        print("sampling from the posterior")
+        pos, prob = mcmc(mlest, cf)
+        print("lnpost of p median: {}".format(np.median(prob)))
+        w0 = np.median(pos, 0)
+        print("MAP rate and adaptation parameters:", w0[:3])
+        out["pos"] = pos
+        out["prob"] = prob
 
-    upsample = int(cf.data.dt / cf.model.dt)
-    test_psth = spikes.psth(tspike_v, upsample, 1)
-    pred_psth = spikes.psth(pred_spikes, upsample, 1)
+    if args.save_data:
+        out["stim"] = data["stim"]
+        out["spikes"] = data["spike_v"]
 
-    eo = performance.corrcoef(tspike_v[::2], tspike_v[1::2], upsample, 1)
-    cc = np.corrcoef(test_psth, pred_psth)[0, 1]
-    print("EO cc: %3.3f" % eo)
-    print("pred cc: %3.3f" % cc)
-    print("spike count: data = {}, pred = {}".format(tspike_v.sum(), pred_spikes.sum()))
-
-    np.savez(args.outfile,
-             astim=data["stim"], aspikes=data["spike_v"],
-             pos=pos, prob=prob, eo=eo, cc=cc,
-             tstim=tdata["stim"], tspikes=tdata["spike_v"],
-             pspikes=np.column_stack(pred_spikes))
+    np.savez(args.outfile, **out)

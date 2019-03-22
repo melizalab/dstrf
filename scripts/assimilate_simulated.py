@@ -6,7 +6,8 @@ from __future__ import print_function, division
 import sys
 import numpy as np
 from munch import Munch
-
+import emcee
+from neurofit import priors, utils, startpos
 from dstrf import io, stimulus, simulate, models, strf, mle
 
 
@@ -32,49 +33,6 @@ def xvalidate(mlest, cf):
 
     best_idx = np.argmax(scores)
     return results[best_idx]
-
-
-def mcmc(mlest, cf):
-    """ Sample from posterior of the model using MCMC """
-    import emcee
-    from neurofit import priors, utils, startpos
-
-    if sys.platform == 'darwin':
-        cf.emcee.nthreads = 1
-
-    # set up priors - base rate and adaptation
-    mat_prior = priors.joint_independent([priors.uniform(l, u) for (l, u) in cf.emcee.bounds])
-    # additional constraint to stay out of disallowed region
-    matboundprior = models.matbounds(cf.model.ataus[0], cf.model.ataus[1], cf.model.t_refract)
-
-    def lnpost(theta):
-        """Posterior probability"""
-        mparams = theta[:3]
-        if not matboundprior(mparams):
-            return -np.inf
-        lp = mat_prior(mparams)
-        if not np.isfinite(lp):
-            return -np.inf
-        # mlest can do penalty for lambda
-        ll = mlest.loglike(theta, rf_lambda, rf_alpha)
-        if not np.isfinite(ll):
-            return -np.inf
-        return lp - ll
-
-    # initial state is a gaussian ball around the ML estimate
-    p0 = startpos.normal_independent(cf.emcee.nwalkers, w0, np.abs(w0) * cf.emcee.startpos_scale)
-    theta_0 = np.median(p0, 0)
-    print("lnpost of p0 median: {}".format(lnpost(theta_0)))
-
-    sampler = emcee.EnsembleSampler(cf.emcee.nwalkers, w0.size, lnpost,
-                                    threads=cf.emcee.nthreads)
-    tracker = utils.convergence_tracker(cf.emcee.nsteps, 25)
-
-    for pos, prob, _ in tracker(sampler.sample(p0, iterations=cf.emcee.nsteps)):
-        continue
-
-    print("average acceptance fraction: {:.2%}".format(sampler.acceptance_fraction.mean()))
-    return pos, prob
 
 
 if __name__ == "__main__":
@@ -139,8 +97,8 @@ if __name__ == "__main__":
         rf_alpha = 0.0
     if args.prior_from:
         results = np.load(args.prior_from)
-        rf_lambda = results["rf_lambda"]
-        rf_alpha = results["rf_alpha"]
+        rf_lambda = results["reg_lambda"]
+        rf_alpha = results["reg_alpha"]
 
     if args.xval:
         print("cross-validating to find optimal regularization parameters")
@@ -154,8 +112,45 @@ if __name__ == "__main__":
 
     out = {"mle": w0, "reg_alpha": rf_alpha, "reg_lambda": rf_lambda}
     if args.mcmc:
+        # this code has to be at top level so that lnpost can be pickled (an
+        # emcee requirement)
         print("sampling from the posterior")
-        pos, prob = mcmc(mlest, cf)
+        if sys.platform == 'darwin':
+            cf.emcee.nthreads = 1
+
+        # set up priors - base rate and adaptation
+        mat_prior = priors.joint_independent([priors.uniform(l, u) for (l, u) in cf.emcee.bounds])
+        # additional constraint to stay out of disallowed region
+        matboundprior = models.matbounds(cf.model.ataus[0], cf.model.ataus[1], cf.model.t_refract)
+
+        def lnpost(theta):
+            """Posterior probability"""
+            mparams = theta[:3]
+            if not matboundprior(mparams):
+                return -np.inf
+            lp = mat_prior(mparams)
+            if not np.isfinite(lp):
+                return -np.inf
+            # mlest can do penalty for lambda
+            ll = mlest.loglike(theta, rf_lambda, rf_alpha)
+            if not np.isfinite(ll):
+                return -np.inf
+            return lp - ll
+
+        # initial state is a gaussian ball around the ML estimate
+        p0 = startpos.normal_independent(cf.emcee.nwalkers, w0, np.abs(w0) * cf.emcee.startpos_scale)
+        theta_0 = np.median(p0, 0)
+        print("lnpost of p0 median: {}".format(lnpost(theta_0)))
+
+        sampler = emcee.EnsembleSampler(cf.emcee.nwalkers, w0.size, lnpost,
+                                        threads=cf.emcee.nthreads)
+        tracker = utils.convergence_tracker(cf.emcee.nsteps, 25)
+
+        for pos, prob, _ in tracker(sampler.sample(p0, iterations=cf.emcee.nsteps)):
+            continue
+
+        print("average acceptance fraction: {:.2%}".format(sampler.acceptance_fraction.mean()))
+
         print("lnpost of p median: {}".format(np.median(prob)))
         w0 = np.median(pos, 0)
         print("MAP rate and adaptation parameters:", w0[:3])

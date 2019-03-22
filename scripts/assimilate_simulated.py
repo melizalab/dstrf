@@ -86,7 +86,7 @@ if __name__ == "__main__":
         print("receptive field is full rank")
         mlest = mle.mat(data["stim"], kcosbas, data["spike_v"], data["spike_h"], data["stim_dt"], data["spike_dt"])
     else:
-        print("receptive field is rank={}".format(krank))
+        print("receptive field is rank {}".format(krank))
         mlest = mle.matfact(data["stim"], kcosbas, krank, data["spike_v"], data["spike_h"], data["stim_dt"], data["spike_dt"])
 
     if args.xval:
@@ -99,6 +99,7 @@ if __name__ == "__main__":
         rf_alpha = results["reg_alpha"]
         w0 = results["mle"]
     else:
+        print("finding maximum likelihood estimate")
         try:
             rf_lambda = cf.model.prior.l1
         except AttributeError:
@@ -108,8 +109,8 @@ if __name__ == "__main__":
         except AttributeError:
             rf_alpha = 0.0
         w0 = mlest.estimate(reg_alpha=rf_alpha, reg_lambda=rf_lambda)
-    print("Regularization params: alpha={:2}, lambda={:2}".format(rf_alpha, rf_lambda))
-    print("MLE rate and adaptation parameters:", w0[:3])
+    print(" - regularization params: alpha={:2}, lambda={:2}".format(rf_alpha, rf_lambda))
+    print(" - MLE rate and adaptation parameters:", w0[:3])
 
     out = {"mle": w0, "reg_alpha": rf_alpha, "reg_lambda": rf_lambda}
     if args.mcmc:
@@ -143,7 +144,7 @@ if __name__ == "__main__":
         # initial state is a gaussian ball around the ML estimate
         p0 = startpos.normal_independent(cf.emcee.nwalkers, w0, np.abs(w0) * cf.emcee.startpos_scale)
         theta_0 = np.median(p0, 0)
-        print("lnpost of p0 median: {}".format(lnpost(theta_0)))
+        print(" - lnpost of p0 median: {}".format(lnpost(theta_0)))
 
         sampler = emcee.EnsembleSampler(cf.emcee.nwalkers, w0.size, lnpost,
                                         threads=cf.emcee.nthreads)
@@ -152,9 +153,9 @@ if __name__ == "__main__":
         for pos, prob, _ in tracker(sampler.sample(p0, iterations=cf.emcee.nsteps)):
             continue
 
-        print("average acceptance fraction: {:.2%}".format(sampler.acceptance_fraction.mean()))
+        print(" - average acceptance fraction: {:.2%}".format(sampler.acceptance_fraction.mean()))
 
-        print("lnpost of p median: {}".format(np.median(prob)))
+        print(" - lnpost of p median: {}".format(np.median(prob)))
         w0 = np.median(pos, 0)
         print("MAP rate and adaptation parameters:", w0[:3])
         out["samples"] = pos

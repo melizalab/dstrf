@@ -35,9 +35,7 @@ def crcns(cf):
     """Songs from the CRCNS data set
 
     cf.data.dt
-    cf.data.stimulus.cell
     cf.data.stimulus.root
-    cf.data.stimulus.stim_type
     cf.data.stimulus.spectrogram.window
     cf.data.stimulus.spectrogram.f_min
     cf.data.stimulus.spectrogram.f_max
@@ -48,9 +46,13 @@ def crcns(cf):
     """
     from dstrf import io
     cspec = cf.data.stimulus.spectrogram
+    # cell and stim_type are hard-coded to avoid the need for extra config
+    # options
+    cell = "blabla0903_2_B"
+    stim_type = "conspecific"
 
-    data = io.load_crcns(cf.data.stimulus.cell,
-                         cf.data.stimulus.stim_type,
+    data = io.load_crcns(cell,
+                         stim_type,
                          cf.data.stimulus.root,
                          step=cf.data.dt,
                          **cspec)

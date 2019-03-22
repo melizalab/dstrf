@@ -115,31 +115,6 @@ def load_dstrf_sim(cell, root, window, step, **specargs):
         return out
 
 
-def load_dstrf_rf_params(cell, root):
-    """ Load RF parameters from simulation dataset """
-    columns = ["Model", "RF"]
-    colmap = {"Latency": "t_peak",
-              "Freq": "f_peak",
-              "SigmaT": "t_sigma",
-              "OmegaT": "t_omega",
-              "SigmaF": "f_sigma",
-              "OmegaF": "f_omega",
-              "Pt": "Pt"}
-    columns.extend(colmap.keys())
-    _, model, rf = cell.split("-")
-    df = (pd.read_csv(os.path.join(root, "summary_table.csv"), usecols=columns, index_col=[0, 1])
-            .rename(columns=colmap)
-            .loc[model, int(rf)])
-    # convert s to ms and Hz to kHz
-    df["t_peak"] *= 1000
-    df["t_sigma"] *= 1000
-    df["t_omega"] /= 1000
-    df["f_peak"] /= 1000
-    df["f_sigma"] /= 1000
-    df["f_omega"] *= 1000
-    return df
-
-
 def load_neurobank(cell, window, step, **specargs):
     """ Load stimulus file and response data from neurobank repository """
     import itertools

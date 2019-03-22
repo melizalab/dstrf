@@ -29,12 +29,63 @@ def pinknoise(N):
     return y / np.sqrt((y ** 2).mean())
 
 
+noise_fns = {
+    "white": whitenoise,
+    "pink": pinknoise
+}
+
+
+# wrappers for filters that make them config-aware. This is only really needed
+# in the case of hg_dstrf because it has to update the config, but it does
+# simplify dispatch a bit
+def hg_dstrf(cf):
+    """ Generate hg-type RF using parameters from the dstrf summary table """
+    import pandas as pd
+    cff = cf["data"]["filter"]
+    model = "tonic"
+    columns = ["Model", "RF"]
+    colmap = {"Latency": "t_peak",
+              "Freq": "f_peak",
+              "SigmaT": "t_sigma",
+              "OmegaT": "t_omega",
+              "SigmaF": "f_sigma",
+              "OmegaF": "f_omega",
+              "Pt": "Pt"}
+    columns.extend(colmap.keys())
+    df = (pd.read_csv(cff["paramfile"], usecols=columns, index_col=[0, 1])
+            .rename(columns=colmap)
+            .loc[model, cff["rf"]])
+    # convert s to ms and Hz to kHz
+    df["t_peak"] *= 1000
+    df["t_sigma"] *= 1000
+    df["t_omega"] /= 1000
+    df["f_peak"] /= 1000
+    df["f_sigma"] /= 1000
+    df["f_omega"] *= 1000
+
+    cff.update(**df)
+    return filters.hg(**cff)
+
+
+filter_fns = {
+    "hg_dstrf": hg_dstrf
+}
+
+
+def get_filter(cf):
+    cff = cf["data"]["filter"]
+    name = cff["fn"]
+    try:
+        return filter_fns[name](cf)
+    except KeyError:
+        fn = getattr(filters, name)
+        return fn(**cff)
+
+
 def multivariate_glm(cf, data, random_seed=None, trials=None):
     """Simulate GLM response to multivariate stimuli. Note: modifies data in place"""
     from .models import predict_spikes_glm
-    filter_params = cf.data.filter.copy()
-    filter_fn = getattr(filters, filter_params.pop("fn"))
-    kernel = filter_fn(**filter_params)[0]
+    kernel = get_filter(cf)[0]
 
     n_taus = len(cf.model.ataus)
     n_freq = kernel.shape[0]
@@ -46,12 +97,7 @@ def multivariate_glm(cf, data, random_seed=None, trials=None):
     np.random.seed(random_seed or cf.data.random_seed)
     mat.random_seed(random_seed or cf.data.random_seed)
 
-    noise_type = cf.data.trial_noise.get("color", "white")
-    # fix dispatch
-    if noise_type == "pink":
-        noise_fun = pinknoise
-    else:
-        noise_fun = whitenoise
+    noise_fn = noise_fns[cf.data.trial_noise.get("color", "white")]
 
     for d in data:
         nchan, nframes = d["stim"].shape
@@ -63,7 +109,7 @@ def multivariate_glm(cf, data, random_seed=None, trials=None):
         V_var = np.var(V_stim)
         spike_t = []
         for i in range(n_trials):
-            V_noise = noise_fun(V_stim.size)
+            V_noise = noise_fn(V_stim.size)
             snr = cf.data.trial_noise.get("snr", None)
             if snr:
                 V_noise *= np.sqrt(V_var / snr / np.var(V_noise))
@@ -84,9 +130,7 @@ def multivariate_glm(cf, data, random_seed=None, trials=None):
 
 def multivariate_dynamical(cf, data, random_seed=None, trials=None):
     """Univariate white noise stimulus, biophysical model """
-    filter_params = cf.data.filter.copy()
-    filter_fn = getattr(filters, filter_params.pop("fn"))
-    kernel = filter_fn(**filter_params)[0]
+    kernel = get_filter(cf)[0]
     n_freq = kernel.shape[0]
 
     n_taus = len(cf.model.ataus)
@@ -105,12 +149,7 @@ def multivariate_dynamical(cf, data, random_seed=None, trials=None):
     np.random.seed(random_seed or cf.data.random_seed)
     mat.random_seed(random_seed or cf.data.random_seed)
 
-    noise_type = cf.data.trial_noise.get("color", "white")
-    # fix dispatch
-    if noise_type == "pink":
-        noise_fun = pinknoise
-    else:
-        noise_fun = whitenoise
+    noise_fn = noise_fns[cf.data.trial_noise.get("color", "white")]
 
     for d in data:
         nchan, nframes = d["stim"].shape
@@ -121,11 +160,11 @@ def multivariate_dynamical(cf, data, random_seed=None, trials=None):
         I_stim = strf.convolve(d["stim"], kernel)
         # normalization is based on Margot's paper
         if "f_sigma" in cf.data.filter:
-            I_stim *= 17 * cf.data.filter.f_sigma
+            I_stim *= 20 / cf.data.filter.f_sigma
         I_var = np.var(I_stim)
         spike_t = []
         for i in range(n_trials):
-            I_noise = noise_fun(I_stim.size)
+            I_noise = noise_fn(I_stim.size)
             snr = cf.data.trial_noise.get("snr", None)
             if snr:
                 I_noise *= np.sqrt(I_var / snr / np.var(I_noise))

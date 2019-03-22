@@ -40,7 +40,7 @@ if __name__ == "__main__":
     import argparse
 
     p = argparse.ArgumentParser(description="sample from posterior of simulated dat")
-    p.add_argument("--prior-from", "-p", help="load regularization/prior params from output of previous run")
+    p.add_argument("--restart", "-r", help="start with parameters from output of previous run")
     p.add_argument("--xval", "-x", action="store_true", help="use cross-validation to optimize regularization params")
     p.add_argument("--mcmc", "-m", action="store_true", help="use MCMC to sample from posterior distribution")
     p.add_argument("--save-data", action="store_true", help="store assimilation data in output file")
@@ -71,7 +71,10 @@ if __name__ == "__main__":
     print("simulating response using {}".format(cf.data.model))
     data_fun = getattr(simulate, cf.data.model)
     data = io.merge_data(data_fun(cf, assim_data))
-    print("spike count: {}".format(data["spike_v"].sum()))
+    print(" - duration:", data["duration"])
+    print(" - stim bins:", data["stim"].shape[1])
+    print(" - spike bins:", data["spike_v"].shape[0])
+    print(" - total spikes:", np.sum(data["spike_v"]))
 
     # this always fails on the first try for reasons I don't understand
     try:
@@ -80,41 +83,41 @@ if __name__ == "__main__":
         pass
     krank = cf.model.filter.get("rank", None)
     if krank is None:
-        print("starting ML estimation - full rank")
+        print("receptive field is full rank")
         mlest = mle.mat(data["stim"], kcosbas, data["spike_v"], data["spike_h"], data["stim_dt"], data["spike_dt"])
     else:
-        print("starting ML estimation - rank={}".format(krank))
+        print("receptive field is rank={}".format(krank))
         mlest = mle.matfact(data["stim"], kcosbas, krank, data["spike_v"], data["spike_h"], data["stim_dt"], data["spike_dt"])
-
-    # prior on RF parameters
-    try:
-        rf_lambda = cf.model.prior.l1
-    except AttributeError:
-        rf_lambda = 0.0
-    try:
-        rf_alpha = cf.model.prior.l2
-    except AttributeError:
-        rf_alpha = 0.0
-    if args.prior_from:
-        results = np.load(args.prior_from)
-        rf_lambda = results["reg_lambda"]
-        rf_alpha = results["reg_alpha"]
 
     if args.xval:
         print("cross-validating to find optimal regularization parameters")
         (rf_alpha, rf_lambda), loglike, w0 = xvalidate(mlest, cf)
-        print("best regularization params: alpha={:.2}, lambda={:.2}".format(rf_alpha, rf_lambda))
-        print("MLE rate and adaptation parameters:", w0[:3])
+    elif args.restart:
+        print("restarting from parameter estimates in {}".format(args.restart))
+        results = np.load(args.restart)
+        rf_lambda = results["reg_lambda"]
+        rf_alpha = results["reg_alpha"]
+        w0 = results["mle"]
     else:
-        print("Regularization parameters: L1={:.2}, L2={:.2}".format(rf_alpha, rf_lambda))
+        try:
+            rf_lambda = cf.model.prior.l1
+        except AttributeError:
+            rf_lambda = 0.0
+        try:
+            rf_alpha = cf.model.prior.l2
+        except AttributeError:
+            rf_alpha = 0.0
         w0 = mlest.estimate(reg_alpha=rf_alpha, reg_lambda=rf_lambda)
-        print("MLE rate and adaptation parameters:", w0[:3])
+    print("Regularization params: alpha={:2}, lambda={:2}".format(rf_alpha, rf_lambda))
+    print("MLE rate and adaptation parameters:", w0[:3])
 
     out = {"mle": w0, "reg_alpha": rf_alpha, "reg_lambda": rf_lambda}
     if args.mcmc:
         # this code has to be at top level so that lnpost can be pickled (an
         # emcee requirement)
         print("sampling from the posterior")
+        print(" - walkers: {}".format(cf.emcee.nwalkers))
+        print(" - steps: {}".format(cf.emcee.nsteps))
         if sys.platform == 'darwin':
             cf.emcee.nthreads = 1
 

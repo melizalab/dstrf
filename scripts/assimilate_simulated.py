@@ -174,9 +174,9 @@ if __name__ == "__main__":
             return lp - ll
 
         # initial state is a gaussian ball around the ML estimate
-        if args.restart and "pos" in results:
+        if args.restart and "samples" in results:
             print(" - restarting from samples in {}".format(args.restart))
-            p0 = results["pos"]
+            p0 = results["samples"]
         else:
             print(" - initializing walkers around point estimate")
             p0 = startpos.normal_independent(cf.emcee.nwalkers, w0, np.abs(w0) * cf.emcee.startpos_scale)

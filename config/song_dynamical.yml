@@ -26,7 +26,7 @@ data:
     current_scaling: 1.0
   filter:
     fn: "hg_dstrf"
-    paramfile: "config/hg_filter_params.csv"
+    paramfile: "config/hg_filters.csv"
     rf: 24
     nfreq: 20
     ntau: 50

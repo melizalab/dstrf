@@ -198,6 +198,7 @@ if __name__ == "__main__":
         out["prob"] = prob
 
     if args.save_data:
+        print("saving assimilation data in output archive")
         k1, k1t, k1f = simulate.get_filter(cf)
         out.update(kernel=k1, stim=data["stim"],
                    spike_v=data["spike_v"], spike_h=data["spike_h"], duration=data["duration"])

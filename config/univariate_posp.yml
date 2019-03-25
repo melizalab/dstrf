@@ -21,7 +21,7 @@ data:
     dt: 10.0
   model: "multivariate_dynamical"
   dynamics:
-    model: "models/pospischil_sm.yml"
+    model: "models/posp.yml"
     current_scaling: 2.0
   trial_noise:
     snr: 2.0

@@ -21,7 +21,7 @@ data:
     dt: 10.0
   model: "multivariate_dynamical"
   dynamics:
-    model: "models/biocm_tonic.yml"
+    model: "models/tonic.yml"
     current_scaling: 4.0
   trial_noise:
     snr: 2.0

@@ -1,0 +1,10 @@
+---
+name: biocm_tonic
+description: consensus TS neuron
+base: biocm
+author: dmeliza
+version: 1.3
+parameters:
+  C: 60 pF
+  g_l: 1.3 nS
+  g_klt: 0 nS

@@ -21,7 +21,7 @@ data:
     dt: 10.0
   model: "multivariate_dynamical"
   dynamics:
-    model: "models/biocm_phasic.yml"
+    model: "models/phasic.yml"
     current_scaling: 9.0
   trial_noise:
     snr: 2.0

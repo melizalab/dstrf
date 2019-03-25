@@ -22,7 +22,7 @@ data:
       gammatone: False
   model: "multivariate_dynamical"
   dynamics:
-    model: "models/biocm_phasic.yml"
+    model: "models/phasic.yml"
     current_scaling: 1.0
   filter:
     fn: "hg_dstrf"

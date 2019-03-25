@@ -42,8 +42,7 @@ def hg_dstrf(cf):
     """ Generate hg-type RF using parameters from the dstrf summary table """
     import pandas as pd
     cff = cf["data"]["filter"]
-    model = "phasic"
-    columns = ["Model", "RF"]
+    columns = ["RF"]
     colmap = {"Latency": "t_peak",
               "Freq": "f_peak",
               "SigmaT": "t_sigma",
@@ -53,9 +52,9 @@ def hg_dstrf(cf):
               "Pt": "Pt", "Amplitude": "ampl"}
     columns.extend(colmap.keys())
     print(" - using params from STRF #{rf}".format(**cff))
-    df = (pd.read_csv(cff["paramfile"], usecols=columns, index_col=[0, 1])
+    df = (pd.read_csv(cff["paramfile"], usecols=columns, index_col=[0])
             .rename(columns=colmap)
-            .loc[model, cff["rf"]])
+            .loc[cff["rf"]])
     # convert s to ms and Hz to kHz
     df["t_peak"] *= 1000
     df["t_sigma"] *= 1000

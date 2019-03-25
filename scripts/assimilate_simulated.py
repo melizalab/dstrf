@@ -82,7 +82,6 @@ if __name__ == "__main__":
         path = k.split(".")
         assoc_in(cf, path, v)
 
-
     model_dt = cf.model.dt
     ncos = cf.model.filter.ncos
     kcosbas = strf.cosbasis(cf.model.filter.len, ncos)
@@ -199,7 +198,6 @@ if __name__ == "__main__":
         out["prob"] = prob
 
     if args.save_data:
-        out["stim"] = data["stim"]
-        out["spikes"] = data["spike_v"]
+        out.update(stim=data["stim"], spike_v=data["spike_v"], spike_h=data["spike_h"], duration=data["duration"])
 
     np.savez(args.outfile, **out)

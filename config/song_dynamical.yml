@@ -51,7 +51,7 @@ xvalidate:
     count: 20
   l1_ratios: [0.1, 0.5, 0.7, 0.9, 0.95]
 emcee:
-  nsteps: 200
+  nsteps: 500
   nthreads: 8
   nwalkers: 1000
   startpos_scale: 2.0

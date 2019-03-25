@@ -4,11 +4,37 @@
 from __future__ import print_function, division
 
 import sys
+import argparse
+import json
 import numpy as np
 from munch import Munch
 import emcee
 from neurofit import priors, utils, startpos
 from dstrf import io, stimulus, simulate, models, strf, mle
+
+
+def assoc_in(dct, path, value):
+    for x in path:
+        prev, dct = dct, dct.setdefault(x, {})
+    prev[x] = value
+
+
+class ParseKeyVal(argparse.Action):
+
+    def __call__(self, parser, namespace, arg, option_string=None):
+        kv = getattr(namespace, self.dest)
+        if kv is None:
+            kv = dict()
+        if not arg.count('=') == 1:
+            raise ValueError(
+                "-k %s argument badly formed; needs key=value" % arg)
+        else:
+            key, val = arg.split('=')
+            try:
+                kv[key] = json.loads(val)
+            except json.decoder.JSONDecodeError:
+                kv[key] = val
+        setattr(namespace, self.dest, kv)
 
 
 def xvalidate(mlest, cf):
@@ -37,19 +63,25 @@ def xvalidate(mlest, cf):
 
 if __name__ == "__main__":
 
-    import argparse
-
     p = argparse.ArgumentParser(description="sample from posterior of simulated dat")
     p.add_argument("--restart", "-r", help="start with parameters from output of previous run")
     p.add_argument("--xval", "-x", action="store_true", help="use cross-validation to optimize regularization params")
     p.add_argument("--mcmc", "-m", action="store_true", help="use MCMC to sample from posterior distribution")
     p.add_argument("--save-data", action="store_true", help="store assimilation data in output file")
+    p.add_argument("--update-config", "-k",
+                   help="set configuration parameter. Use JSON literal. example: -k data.filter.rf=20",
+                   action=ParseKeyVal, default=dict(), metavar="KEY=VALUE")
     p.add_argument("config", help="path to configuration yaml file")
     p.add_argument("outfile", help="path to output npz file")
 
     args = p.parse_args()
     with open(args.config, "rt") as fp:
         cf = Munch.fromYAML(fp)
+
+    for k, v in args.update_config.items():
+        path = k.split(".")
+        assoc_in(cf, path, v)
+
 
     model_dt = cf.model.dt
     ncos = cf.model.filter.ncos
@@ -142,7 +174,12 @@ if __name__ == "__main__":
             return lp - ll
 
         # initial state is a gaussian ball around the ML estimate
-        p0 = startpos.normal_independent(cf.emcee.nwalkers, w0, np.abs(w0) * cf.emcee.startpos_scale)
+        if args.restart and "pos" in results:
+            print(" - restarting from samples in {}".format(args.restart))
+            p0 = results["pos"]
+        else:
+            print(" - initializing walkers around point estimate")
+            p0 = startpos.normal_independent(cf.emcee.nwalkers, w0, np.abs(w0) * cf.emcee.startpos_scale)
         theta_0 = np.median(p0, 0)
         print(" - lnpost of p0 median: {}".format(lnpost(theta_0)))
 

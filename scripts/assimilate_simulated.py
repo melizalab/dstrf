@@ -3,6 +3,7 @@
 """ This script will do assimilation from simulated data """
 from __future__ import print_function, division
 
+import os
 import sys
 import argparse
 import json
@@ -71,12 +72,17 @@ if __name__ == "__main__":
     p.add_argument("--update-config", "-k",
                    help="set configuration parameter. Use JSON literal. example: -k data.filter.rf=20",
                    action=ParseKeyVal, default=dict(), metavar="KEY=VALUE")
+    p.add_argument("--skip-completed", "-s", action="store_true", help="skip run if output file exists")
     p.add_argument("config", help="path to configuration yaml file")
     p.add_argument("outfile", help="path to output npz file")
 
     args = p.parse_args()
     with open(args.config, "rt") as fp:
         cf = Munch.fromYAML(fp)
+
+    if args.skip_completed and os.path.exists(args.outfile):
+        print("skipping run - output file {} already exists".format(args.outfile))
+        sys.exit(0)
 
     for k, v in args.update_config.items():
         path = k.split(".")

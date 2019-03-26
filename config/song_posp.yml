@@ -3,11 +3,11 @@ model:
   ataus: [10.0, 200.0]
   t_refract: 2.0
   filter:
-    rank: 2
+    rank: 1
     len: 50
     ncos: 12
   prior:
-    l1: 50
+    l1: 5
     l2: 5
 data:
   stimulus:

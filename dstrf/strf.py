@@ -169,13 +169,14 @@ def factorize(k, rank=1, thresh=None):
     return (U[:, :rank], V[:rank] * s[:rank, np.newaxis], )
 
 
-def defactorize(v, nfreq, rank=1):
-    """Convert a factorized RF into the full-rank matrix
+def unpack_factors(v, nfreq, rank=1):
+    """Unpack factorized RF parameters into componenent matrices
 
     v - the factorized RF parameters as a 1D array with dimension (nfreq * rank
     + ntau * rank). This vector can be produced by
     np.concatenate([np.flatten(v) for v in factorize(RF, rank)])
 
+    Returns k_f (nf, rank) and k_t (rank, nt) such that np.dot(k_f, k_t) ~= k
     """
     nv = v.size
     nfv = nfreq * rank
@@ -185,4 +186,15 @@ def defactorize(v, nfreq, rank=1):
 
     k_f = v[:nfv].reshape((nfreq, rank))
     k_t = v[nfv:].reshape((rank, ntau))
-    return np.dot(k_f, k_t)
+    return k_f, k_t
+
+
+def defactorize(v, nfreq, rank=1):
+    """Convert a factorized RF into the full-rank matrix
+
+    v - the factorized RF parameters as a 1D array with dimension (nfreq * rank
+    + ntau * rank). This vector can be produced by
+    np.concatenate([np.flatten(v) for v in factorize(RF, rank)])
+
+    """
+    return np.dot(*unpack_factors(v, nfreq, rank))

@@ -12,6 +12,7 @@ data:
   stimulus:
     source: "randn"
     duration: 100000
+    random_seed: 1048
   filter:
     fn: "gammadiff"
     tau1: 32.0
@@ -25,7 +26,7 @@ data:
     current_scaling: 2.0
   trial_noise:
     snr: 2.0
-  random_seed: 1
+    random_seed: 1
   dt: 10.0
   trials: 10
 spike_detect:

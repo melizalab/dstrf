@@ -13,6 +13,7 @@ data:
   stimulus:
     source: "randn"
     duration: 400000
+    random_seed: 1048
   model: "multivariate_glm"
   filter:
     fn: "gabor"
@@ -30,7 +31,7 @@ data:
   adaptation: [7.0, 100.0, 2.0]
   trial_noise:
     snr: 2.0
-  random_seed: 1
+    random_seed: 1
   dt: 10.0
   trials: 5
 xvalidate:

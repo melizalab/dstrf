@@ -21,7 +21,7 @@ def randn(cf, random_seed=None):
     upsample = int(cf.data.dt / cf.model.dt)
     n_frames = n_bins // upsample
 
-    np.random.seed(random_seed or cf.data.random_seed)
+    np.random.seed(random_seed or cf.data.stimulus.random_seed)
     stim = np.random.randn(n_freq, n_frames)
     try:
         stim[:, :cf.data.stimulus.intro] = 0

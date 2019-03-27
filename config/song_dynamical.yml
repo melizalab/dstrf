@@ -37,7 +37,7 @@ data:
   trial_noise:
     color: pink
     snr: 2.0
-  random_seed: 1
+    random_seed: 1
   dt: 1.0
   trials: 10
   test_proportion: 0.2

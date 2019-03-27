@@ -94,8 +94,8 @@ def multivariate_glm(cf, data, random_seed=None, trials=None):
     print(" - stimulus dimension: {}". format(n_freq))
     print(" - adaptation parameters: {}". format(cf.data.adaptation))
 
-    np.random.seed(random_seed or cf.data.random_seed)
-    mat.random_seed(random_seed or cf.data.random_seed)
+    np.random.seed(random_seed or cf.data.trial_noise.random_seed)
+    mat.random_seed(random_seed or cf.data.trial_noise.random_seed)
 
     noise_fn = noise_fns[cf.data.trial_noise.get("color", "white")]
 
@@ -106,6 +106,7 @@ def multivariate_glm(cf, data, random_seed=None, trials=None):
         spike_v = np.zeros((nbins, n_trials), dtype='i')
         spike_h = np.zeros((nbins, n_taus, n_trials), dtype='d')
         V_stim = strf.convolve(d["stim"], kernel)
+        V_stim += np.random.randn(V_stim.size) * 10
         V_var = np.var(V_stim)
         spike_t = []
         for i in range(n_trials):
@@ -113,7 +114,6 @@ def multivariate_glm(cf, data, random_seed=None, trials=None):
             snr = cf.data.trial_noise.get("snr", None)
             if snr:
                 V_noise *= np.sqrt(V_var / snr / np.var(V_noise))
-            # I_noise *= cf.data.trial_noise.sd
             V_tot = V_stim + V_noise
             spikes = predict_spikes_glm(V_tot, cf.data.adaptation, cf)
             spike_v[:, i] = spikes
@@ -146,7 +146,7 @@ def multivariate_dynamical(cf, data, random_seed=None, trials=None):
     biocm_model = spkc.load_module(pymodel, os.path.dirname(cf.data.dynamics.model))
     print(" - dynamical model: {}".format(cf.data.dynamics.model))
 
-    np.random.seed(random_seed or cf.data.random_seed)
+    np.random.seed(random_seed or cf.data.trial_noise.random_seed)
     mat.random_seed(random_seed or cf.data.random_seed)
 
     noise_fn = noise_fns[cf.data.trial_noise.get("color", "white")]

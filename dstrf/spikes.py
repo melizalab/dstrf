@@ -4,8 +4,6 @@
 from __future__ import print_function, division, absolute_import
 
 import numpy as np
-import pyspike as spk
-
 
 def psth(spike_v, downsample=None, smooth=None):
     """Compute psth from multi-trial spike vector (dimension nbins x ntrials)
@@ -17,7 +15,8 @@ def psth(spike_v, downsample=None, smooth=None):
 
     nbins, ntrials = spike_v.shape
     if downsample is not None:
-        psth = np.sum(spike_v.reshape(nbins // downsample, ntrials, -1), axis=(1, 2))
+        new_bins = nbins // downsample
+        psth = np.sum(spike_v[:(new_bins * downsample),:].reshape(new_bins, ntrials, -1), axis=(1, 2))
     else:
         psth = np.sum(spike_v, axis=1)
     if smooth is not None:

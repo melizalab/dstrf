@@ -76,8 +76,9 @@ def dstrf_sim(cf):
     """
     from dstrf import io
     cspec = cf.data.stimulus.spectrogram
+    cell = "b-tonic-24"
 
-    data = io.load_dstrf_sim(cf.data.stimulus.cell,
+    data = io.load_dstrf_sim(cell,
                              cf.data.stimulus.root,
                              step=cf.data.dt,
                              **cspec)

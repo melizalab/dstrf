@@ -106,7 +106,6 @@ def multivariate_glm(cf, data, random_seed=None, trials=None):
         spike_v = np.zeros((nbins, n_trials), dtype='i')
         spike_h = np.zeros((nbins, n_taus, n_trials), dtype='d')
         V_stim = strf.convolve(d["stim"], kernel)
-        V_stim += np.random.randn(V_stim.size) * 10
         V_var = np.var(V_stim)
         spike_t = []
         for i in range(n_trials):
@@ -114,6 +113,8 @@ def multivariate_glm(cf, data, random_seed=None, trials=None):
             snr = cf.data.trial_noise.get("snr", None)
             if snr:
                 V_noise *= np.sqrt(V_var / snr / np.var(V_noise))
+            elif "sd" in cf.data.trial_noise:
+                V_noise *= cf.data.trial_noise.sd
             V_tot = V_stim + V_noise
             spikes = predict_spikes_glm(V_tot, cf.data.adaptation, cf)
             spike_v[:, i] = spikes
@@ -147,7 +148,7 @@ def multivariate_dynamical(cf, data, random_seed=None, trials=None):
     print(" - dynamical model: {}".format(cf.data.dynamics.model))
 
     np.random.seed(random_seed or cf.data.trial_noise.random_seed)
-    mat.random_seed(random_seed or cf.data.random_seed)
+    mat.random_seed(random_seed or cf.data.trial_noise.random_seed)
 
     noise_fn = noise_fns[cf.data.trial_noise.get("color", "white")]
 
@@ -168,7 +169,8 @@ def multivariate_dynamical(cf, data, random_seed=None, trials=None):
             snr = cf.data.trial_noise.get("snr", None)
             if snr:
                 I_noise *= np.sqrt(I_var / snr / np.var(I_noise))
-            # I_noise *= cf.data.trial_noise.sd
+            elif "sd" in cf.data.trial_noise:
+                I_noise *= cf.data.trial_noise.sd
             I_tot = (I_stim + I_noise) * cf.data.dynamics.current_scaling
             X = biocm_model.integrate(biocm_params, biocm_state0, I_tot, cf.data.dt, cf.model.dt)
             det = qs.detector(cf.spike_detect.thresh, det_rise_time)

@@ -3,11 +3,11 @@ model:
   ataus: [10.0, 200.0]
   t_refract: 2.0
   filter:
-    rank: 2
+    rank: 1
     len: 50
     ncos: 12
   prior:
-    l1: 50
+    l1: 5
     l2: 5
 data:
   stimulus:
@@ -16,14 +16,14 @@ data:
     spectrogram:
       window: 2.5
       compress: 10
-      f_min: 0
+      f_min: 1.0
       f_max: 8.0
       f_count: 20
-      gammatone: False
+      gammatone: True
   model: "multivariate_dynamical"
   dynamics:
     model: "models/phasic.yml"
-    current_scaling: 1.0
+    current_scaling: 4.0
   filter:
     fn: "hg_dstrf"
     paramfile: "config/hg_filters.csv"
@@ -31,15 +31,15 @@ data:
     nfreq: 20
     ntau: 50
     t_max: 50
-    ampl: 1.5
+    ampl: 1.0
     f_max: 8
     Pf: 0.0
   trial_noise:
     color: pink
-    snr: 2.0
-    random_seed: 1
+    snr: 4.0
+    random_seed: 1049
   dt: 1.0
-  trials: 10
+  trials: 3
   test_proportion: 0.2
 spike_detect:
   thresh: -20.0

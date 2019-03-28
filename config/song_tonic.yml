@@ -16,14 +16,14 @@ data:
     spectrogram:
       window: 2.5
       compress: 10
-      f_min: 0
+      f_min: 1.0
       f_max: 8.0
       f_count: 20
-      gammatone: False
+      gammatone: True
   model: "multivariate_dynamical"
   dynamics:
     model: "models/tonic.yml"
-    current_scaling: 1.0
+    current_scaling: 4.0
   filter:
     fn: "hg_dstrf"
     paramfile: "config/hg_filters.csv"
@@ -36,8 +36,8 @@ data:
     Pf: 0.0
   trial_noise:
     color: pink
-    snr: 2.0
-    random_seed: 1
+    snr: 4.0
+    random_seed: 1049
   dt: 1.0
   trials: 10
   test_proportion: 0.2

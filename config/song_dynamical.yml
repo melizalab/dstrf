@@ -3,7 +3,7 @@ model:
   ataus: [10.0, 200.0]
   t_refract: 2.0
   filter:
-    rank: 1
+    rank: 2
     len: 50
     ncos: 12
   prior:

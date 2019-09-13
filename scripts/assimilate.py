@@ -105,9 +105,11 @@ if __name__ == "__main__":
         print("reserving last {} stimuli for test".format(n_test))
         assim_data = data[:-n_test]
 
-    print("simulating response using {}".format(cf.data.model))
-    data_fun = getattr(simulate, cf.data.model)
-    data = io.merge_data(data_fun(cf, assim_data))
+    if "model" in cf.data:
+        print("simulating response using {}".format(cf.data.model))
+        data_fun = getattr(simulate, cf.data.model)
+        assim_data = data_fun(cf, assim_data)
+    data = io.merge_data(assim_data)
     print(" - duration:", data["duration"])
     print(" - stim bins:", data["stim"].shape[1])
     print(" - spike bins:", data["spike_v"].shape[0])

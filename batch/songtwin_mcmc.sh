@@ -2,7 +2,6 @@
 
 . venv/bin/activate
 export OMP_NUM_THREADS=1
-export THEANO_FLAGS="base_compiledir=/scratch/dmeliza/.theano"
 
 APARAMS="--save-data --mcmc --skip-completed"
 

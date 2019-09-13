@@ -11,7 +11,7 @@ import numpy as np
 from munch import Munch
 import emcee
 from neurofit import priors, utils, startpos
-from dstrf import io, stimulus, simulate, models, strf, mle
+from dstrf import io, data, simulate, models, strf, mle
 
 
 def assoc_in(dct, path, value):
@@ -92,8 +92,8 @@ if __name__ == "__main__":
     ncos = cf.model.filter.ncos
     kcosbas = strf.cosbasis(cf.model.filter.len, ncos)
 
-    print("loading/generating stimuli")
-    stim_fun = getattr(stimulus, cf.data.stimulus.source)
+    print("loading/generating data using", cf.data.source)
+    stim_fun = getattr(data, cf.data.source)
     data     = stim_fun(cf)
 
     p_test = cf.data.get("test_proportion", None)

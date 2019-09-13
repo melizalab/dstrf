@@ -9,8 +9,8 @@ model:
     l1: 1.0
     l2: 0.0
 data:
+  source: "randn"
   stimulus:
-    source: "randn"
     duration: 100000
     random_seed: 1048
   filter:

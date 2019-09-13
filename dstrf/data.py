@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 # -*- mode: python -*-
-""" This module will load and/or generate stimuli """
+""" This module will load stimuli and responses """
+
 from __future__ import print_function, division
 
 import numpy as np
@@ -32,40 +33,42 @@ def randn(cf, random_seed=None):
 
 
 def crcns(cf):
-    """Songs from the CRCNS data set
+    """Loads responses from the CRCNS data set. Pads the stimuli and preprocesses the spikes.
 
     cf.data.dt
-    cf.data.stimulus.root
+    cf.data.root
+    cf.data.cell
+    cf.data.stimulus.stim_type
     cf.data.stimulus.spectrogram.window
     cf.data.stimulus.spectrogram.f_min
     cf.data.stimulus.spectrogram.f_max
     cf.data.stimulus.spectrogram.compress
     cf.data.stimulus.spectrogram.gammatone
-    cf.data.filter.ntau
-    (cf.data.filter.nfreq)
+    cf.data.stimulus.spectrogram.prepad
+    cf.model.filter.len
+    cf.model.dt
+    cf.model.ataus
     """
     from dstrf import io
     cspec = cf.data.stimulus.spectrogram
-    # cell and stim_type are hard-coded to avoid the need for extra config
-    # options
-    cell = "blabla0903_2_B"
-    stim_type = "conspecific"
-
+    # default option for cell when we just care about the stimuli
+    cell = cf.data.get("cell", "blabla0903_2_B")
     data = io.load_crcns(cell,
-                         stim_type,
-                         cf.data.stimulus.root,
+                         cf.data.stimulus.stim_type,
+                         cf.data.root,
                          step=cf.data.dt,
                          **cspec)
 
-    return io.pad_stimuli(data, 0.0, cf.data.filter.ntau * cf.data.dt, fill_value=0.0)
+    io.pad_stimuli(data, cf.data.prepadding, cf.model.filter.len * cf.data.dt, fill_value=0.0)
+    io.preprocess_spikes(data, cf.model.dt, cf.model.ataus)
+    return data
 
 
 def dstrf_sim(cf):
     """Songs from the dstrf_sim data set
 
     cf.data.dt
-    cf.data.stimulus.cell
-    cf.data.stimulus.root
+    cf.data.root
     cf.data.stimulus.spectrogram.window
     cf.data.stimulus.spectrogram.f_min
     cf.data.stimulus.spectrogram.f_max
@@ -76,11 +79,14 @@ def dstrf_sim(cf):
     """
     from dstrf import io
     cspec = cf.data.stimulus.spectrogram
-    cell = "b-tonic-24"
+    # default option for cell when we just care about the stimuli
+    cell = cf.data.get("cell", "b-tonic-24")
 
     data = io.load_dstrf_sim(cell,
-                             cf.data.stimulus.root,
+                             cf.data.root,
                              step=cf.data.dt,
                              **cspec)
 
-    return io.pad_stimuli(data, 0.0, cf.model.filter.len * cf.data.dt, fill_value=0.0)
+    io.pad_stimuli(data, 0.0, cf.model.filter.len * cf.data.dt, fill_value=0.0)
+    io.preprocess_spikes(data, cf.model.dt, cf.model.ataus)
+    return data

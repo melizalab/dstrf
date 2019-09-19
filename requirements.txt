@@ -15,7 +15,6 @@ kiwisolver==1.0.1
 mat-neuron==0.4.1
 matplotlib==2.2.2
 mpmath==1.0.0
-neurofit==0.3.5
 numpy==1.14.2
 pandas==0.23.3
 parso==0.3.1

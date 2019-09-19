@@ -10,7 +10,7 @@ import json
 import numpy as np
 from munch import Munch
 import emcee
-from neurofit import priors, utils, startpos
+from emcee_tools import priors, utils, startpos
 from dstrf import io, data, simulate, models, strf, mle
 
 

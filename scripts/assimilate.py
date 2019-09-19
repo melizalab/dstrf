@@ -68,6 +68,7 @@ if __name__ == "__main__":
     p.add_argument("--restart", "-r", help="start with parameters from output of previous run")
     p.add_argument("--xval", "-x", action="store_true", help="use cross-validation to optimize regularization params")
     p.add_argument("--mcmc", "-m", action="store_true", help="use MCMC to sample from posterior distribution")
+    p.add_argument("--save-chain", action="store_true", help="for MCMC, store complete chain in output file")
     p.add_argument("--save-data", action="store_true", help="store assimilation data in output file")
     p.add_argument("--update-config", "-k",
                    help="set configuration parameter. Use JSON literal. example: -k data.filter.rf=20",
@@ -198,12 +199,16 @@ if __name__ == "__main__":
             continue
 
         print(" - average acceptance fraction: {:.2%}".format(sampler.acceptance_fraction.mean()))
+        print(" - Gelman-Rubin statistic (for ω): {:.2}".format(utils.gelman_rubin(sampler.chain)[0]))
 
         print(" - lnpost of p median: {}".format(np.median(prob)))
         w0 = np.median(pos, 0)
         print("MAP rate and adaptation parameters:", w0[:3])
         out["samples"] = pos
         out["prob"] = prob
+
+        if args.save_mcmc:
+            out["chain"] = sampler.chain
 
     if args.save_data:
         print("saving assimilation data in output archive")

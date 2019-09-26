@@ -207,7 +207,7 @@ if __name__ == "__main__":
         out["samples"] = pos
         out["prob"] = prob
 
-        if args.save_mcmc:
+        if args.save_chain:
             out["chain"] = sampler.chain
 
     if args.save_data:

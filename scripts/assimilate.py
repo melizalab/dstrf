@@ -204,17 +204,18 @@ if __name__ == "__main__":
             nburnin = cf.emcee.get("nburnin", 50)
             print(" - burn-in sampler for {} steps".format(nburnin))
             pos, prob, state = sampler.run_mcmc(p0, nburnin)
+            sampler.reset()
         else:
             pos = p0
             prob = results["prob"]
         utils.replace_invalid_walkers(pos, prob)
 
-        for step, pos, prob, _ in tracker(sampler.sample(p0, iterations=cf.emcee.nsteps)):
+        for step, pos, prob, _ in tracker(sampler.sample(p0, lnprob0=prob, iterations=cf.emcee.nsteps)):
             continue
 
         gr = utils.gelman_rubin(sampler.chain[:, -200:, :])
         print(" - average acceptance fraction: {:.2%}".format(sampler.acceptance_fraction.mean()))
-        print(" - average Gelman-Rubin statistic: {:.2}".format(gr.mean()))
+        print(" - average Gelman-Rubin statistic (last 200 steps): {:.2}".format(gr.mean()))
 
         print(" - lnpost of p median: {}".format(np.median(prob)))
         w0 = np.median(pos, 0)

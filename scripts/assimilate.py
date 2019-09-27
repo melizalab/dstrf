@@ -182,9 +182,12 @@ if __name__ == "__main__":
             return lp - ll
 
         # initial state is a gaussian ball around the ML estimate
+        step = 0
         if args.restart and "samples" in results:
             print(" - restarting from samples in {}".format(args.restart))
             p0 = results["samples"]
+            step = results["step"]
+            print(" - last step was {}".format(step))
         else:
             print(" - initializing walkers around point estimate")
             p0 = startpos.normal_independent(cf.emcee.nwalkers, w0, np.abs(w0) * cf.emcee.startpos_scale)
@@ -193,19 +196,21 @@ if __name__ == "__main__":
 
         sampler = emcee.EnsembleSampler(cf.emcee.nwalkers, w0.size, lnpost,
                                         threads=cf.emcee.nthreads)
-        tracker = utils.convergence_tracker(cf.emcee.nsteps, 25)
+        tracker = utils.convergence_tracker(cf.emcee.nsteps, skip=25, start=step)
 
-        for pos, prob, _ in tracker(sampler.sample(p0, iterations=cf.emcee.nsteps)):
+        for step, pos, prob, _ in tracker(sampler.sample(p0, iterations=cf.emcee.nsteps)):
             continue
 
+        gr = utils.gelman_rubin(sampler.chain[:, -200:, :])
         print(" - average acceptance fraction: {:.2%}".format(sampler.acceptance_fraction.mean()))
-        print(" - Gelman-Rubin statistic (for ω): {:.2}".format(utils.gelman_rubin(sampler.chain)[0]))
+        print(" - Gelman-Rubin statistic (for ω): {:.2}".format(gr[0]))
 
         print(" - lnpost of p median: {}".format(np.median(prob)))
         w0 = np.median(pos, 0)
         print("MAP rate and adaptation parameters:", w0[:3])
         out["samples"] = pos
         out["prob"] = prob
+        out["step"] = step
 
         if args.save_chain:
             out["chain"] = sampler.chain

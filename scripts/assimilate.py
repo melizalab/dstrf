@@ -220,7 +220,7 @@ if __name__ == "__main__":
         out.update(stim=data["stim"],
                    spike_v=data["spike_v"], spike_h=data["spike_h"], duration=data["duration"])
         if "model" in cf.data:
-            k1, k1t, k1f = simulate.get_filter(cf)
+            k1 = simulate.get_filter(cf)[0]
             out.update(kernel=k1)
 
 

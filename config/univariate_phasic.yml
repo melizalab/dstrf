@@ -33,6 +33,7 @@ spike_detect:
   thresh: -20.0
   rise_dt: 1.0
 emcee:
+  nburnin: 50
   nsteps: 200
   nthreads: 8
   nwalkers: 500

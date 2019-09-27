@@ -186,24 +186,35 @@ if __name__ == "__main__":
         if args.restart and "samples" in results:
             print(" - restarting from samples in {}".format(args.restart))
             p0 = results["samples"]
-            step = results["step"]
+            try:
+                step = results["step"]
+            except KeyError:
+                pass
             print(" - last step was {}".format(step))
         else:
             print(" - initializing walkers around point estimate")
             p0 = startpos.normal_independent(cf.emcee.nwalkers, w0, np.abs(w0) * cf.emcee.startpos_scale)
-        theta_0 = np.median(p0, 0)
-        print(" - lnpost of p0 median: {}".format(lnpost(theta_0)))
 
         sampler = emcee.EnsembleSampler(cf.emcee.nwalkers, w0.size, lnpost,
                                         threads=cf.emcee.nthreads)
         tracker = utils.convergence_tracker(cf.emcee.nsteps, skip=25, start=step)
+
+        # burnin and replace zero-probability walkers
+        if not args.restart:
+            nburnin = cf.emcee.get("nburnin", 50)
+            print(" - burn-in sampler for {} steps".format(nburnin))
+            pos, prob, state = sampler.run_mcmc(p0, nburnin)
+        else:
+            pos = p0
+            prob = results["prob"]
+        utils.replace_invalid_walkers(pos, prob)
 
         for step, pos, prob, _ in tracker(sampler.sample(p0, iterations=cf.emcee.nsteps)):
             continue
 
         gr = utils.gelman_rubin(sampler.chain[:, -200:, :])
         print(" - average acceptance fraction: {:.2%}".format(sampler.acceptance_fraction.mean()))
-        print(" - Gelman-Rubin statistic (for ω): {:.2}".format(gr[0]))
+        print(" - average Gelman-Rubin statistic: {:.2}".format(gr.mean()))
 
         print(" - lnpost of p median: {}".format(np.median(prob)))
         w0 = np.median(pos, 0)

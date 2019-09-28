@@ -181,11 +181,15 @@ if __name__ == "__main__":
                 return -np.inf
             return lp - ll
 
+        sampler = emcee.EnsembleSampler(cf.emcee.nwalkers, w0.size, lnpost,
+                                        threads=cf.emcee.nthreads)
+
         # initial state is a gaussian ball around the ML estimate
         step = 0
         if args.restart and "samples" in results:
             print(" - restarting from samples in {}".format(args.restart))
-            p0 = results["samples"]
+            pos = results["samples"]
+            prob = results["prob"]
             try:
                 step = results["step"]
             except KeyError:
@@ -194,22 +198,14 @@ if __name__ == "__main__":
         else:
             print(" - initializing walkers around point estimate")
             p0 = startpos.normal_independent(cf.emcee.nwalkers, w0, np.abs(w0) * cf.emcee.startpos_scale)
-
-        sampler = emcee.EnsembleSampler(cf.emcee.nwalkers, w0.size, lnpost,
-                                        threads=cf.emcee.nthreads)
-        tracker = utils.convergence_tracker(cf.emcee.nsteps, skip=25, start=step)
-
-        # burnin and replace zero-probability walkers
-        if not args.restart:
             nburnin = cf.emcee.get("nburnin", 50)
             print(" - burn-in sampler for {} steps".format(nburnin))
             pos, prob, state = sampler.run_mcmc(p0, nburnin)
             sampler.reset()
-        else:
-            pos = p0
-            prob = results["prob"]
+
         utils.replace_invalid_walkers(pos, prob)
 
+        tracker = utils.convergence_tracker(cf.emcee.nsteps, skip=25, start=step)
         for step, pos, prob, _ in tracker(sampler.sample(p0, lnprob0=prob, iterations=cf.emcee.nsteps)):
             continue
 

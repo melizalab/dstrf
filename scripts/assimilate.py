@@ -198,6 +198,7 @@ if __name__ == "__main__":
         else:
             print(" - initializing walkers around point estimate")
             p0 = startpos.normal_independent(cf.emcee.nwalkers, w0, np.abs(w0) * cf.emcee.startpos_scale)
+            # p0 = startpos.normal_independent(cf.emcee.nwalkers, w0, 1e-4)
             nburnin = cf.emcee.get("nburnin", 50)
             print(" - burn-in sampler for {} steps".format(nburnin))
             pos, prob, state = sampler.run_mcmc(p0, nburnin)
@@ -210,6 +211,7 @@ if __name__ == "__main__":
             continue
 
         gr = utils.gelman_rubin(sampler.chain[:, -200:, :])
+        print(" - max autocorrelation: {:3}".format(sampler.acor.max()))
         print(" - average acceptance fraction: {:.2%}".format(sampler.acceptance_fraction.mean()))
         print(" - average Gelman-Rubin statistic (last 200 steps): {:.2}".format(gr.mean()))
 

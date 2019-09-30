@@ -213,10 +213,12 @@ if __name__ == "__main__":
                                                          iterations=cf.emcee.nsteps)):
             continue
 
-        gr = utils.gelman_rubin(sampler.chain[:, -200:, :])
-        #print(" - max autocorrelation: {:3}".format(sampler.acor.max()))
-        print(" - average acceptance fraction: {:.2%}".format(sampler.acceptance_fraction.mean()))
-        print(" - average Gelman-Rubin statistic (last 200 steps): {:.2}".format(gr.mean()))
+        if args.save_chain:
+            gr = utils.gelman_rubin(sampler.chain[:, -200:, :])
+            #print(" - max autocorrelation: {:3}".format(sampler.acor.max()))
+            print(" - average acceptance fraction: {:.2%}".format(sampler.acceptance_fraction.mean()))
+            print(" - average Gelman-Rubin statistic (last 200 steps): {:.2}".format(gr.mean()))
+            out["chain"] = sampler.chain
 
         print(" - lnpost of p median: {}".format(np.median(prob)))
         w0 = np.median(pos, 0)
@@ -225,8 +227,6 @@ if __name__ == "__main__":
         out["prob"] = prob
         out["step"] = step
 
-        if args.save_chain:
-            out["chain"] = sampler.chain
 
     if args.save_data:
         print("saving assimilation data in output archive")

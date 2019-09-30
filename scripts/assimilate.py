@@ -211,7 +211,7 @@ if __name__ == "__main__":
             continue
 
         gr = utils.gelman_rubin(sampler.chain[:, -200:, :])
-        print(" - max autocorrelation: {:3}".format(sampler.acor.max()))
+        #print(" - max autocorrelation: {:3}".format(sampler.acor.max()))
         print(" - average acceptance fraction: {:.2%}".format(sampler.acceptance_fraction.mean()))
         print(" - average Gelman-Rubin statistic (last 200 steps): {:.2}".format(gr.mean()))
 

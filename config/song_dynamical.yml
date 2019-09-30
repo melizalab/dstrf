@@ -54,7 +54,7 @@ emcee:
   nsteps: 500
   nthreads: 8
   nwalkers: 1000
-  startpos_scale: 2.0
+  startpos_scale: 0.001
   bounds:
   - [0, 20]
   - [-50, 200]

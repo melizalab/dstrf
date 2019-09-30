@@ -207,7 +207,10 @@ if __name__ == "__main__":
         utils.replace_invalid_walkers(pos, prob)
 
         tracker = utils.convergence_tracker(cf.emcee.nsteps, skip=25, start=step)
-        for step, pos, prob, _ in tracker(sampler.sample(pos, lnprob0=prob, iterations=cf.emcee.nsteps)):
+        for step, pos, prob, _ in tracker(sampler.sample(pos,
+                                                         lnprob0=prob,
+                                                         storechain=args.save_chain,
+                                                         iterations=cf.emcee.nsteps)):
             continue
 
         gr = utils.gelman_rubin(sampler.chain[:, -200:, :])

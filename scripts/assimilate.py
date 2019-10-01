@@ -53,7 +53,7 @@ def xvalidate(mlest, cf, **kwargs):
     scores = []
     results = []
 
-    for reg, s, w in crossvalidate.elasticnet(mlest, 4, reg_grid, l1_ratios, avextol=1e-5, disp=False, **kwargs):
+    for reg, s, w in crossvalidate.elasticnet(mlest, 4, reg_grid, l1_ratios, avextol=1e-5, **kwargs):
         scores.append(s)
         results.append((reg, s, w))
         print(" - alpha={:.2}, lambda={:.2}: {}".format(reg[0], reg[1], s))

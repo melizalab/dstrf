@@ -148,29 +148,39 @@ class mat(object):
             X /= X.std(0)
         return correlate(X, spikes)
 
+    @property
+    def n_hparams(self):
+        """Returns the number of h parameters"""
+        return self._X_spike.shape[1]
+
+    @property
+    def n_kparams(self):
+        """Returns the number of k params"""
+        return self._X_stim.shape[1]
+
     def param0(self):
         """Returns a parameter vector with a good starting guess"""
-        kdim = self._X_stim.shape[1]
         nbins, hdim, ntrials = self._X_spike.shape
         meanrate = self._spikes.sum(0).mean() / nbins
         return np.r_[np.exp(meanrate),
-                     np.zeros(hdim + kdim)].astype(self.dtype)
+                     np.zeros(hdim + self.n_kparams)].astype(self.dtype)
 
-    def estimate(self, w0=None, reg_lambda=0, reg_alpha=0, avextol=1e-6, maxiter=300, **kwargs):
+    def estimate(self, w0=None, reg_lambda=0, reg_alpha=0, avextol=1e-6, maxiter=300, method='trust-krylov', **kwargs):
         """Compute max-likelihood estimate of the model parameters
 
         w0: initial guess at parameters. If not supplied (default), sets omega
         to the mean firing rate and all other parameters to zero.
 
-        Additional arguments are passed to scipy.optimize.fmin_ncg
+        Additional arguments are passed to scipy.optimize.minimize
 
         """
         import scipy.optimize as op
         if w0 is None:
             w0 = self.param0()
 
-        return op.fmin_ncg(self.loglike, w0, self.gradient, fhess_p=self.hessianv,
-                           args=(reg_lambda, reg_alpha), avextol=avextol, maxiter=maxiter, **kwargs)
+        res = op.minimize(self.loglike, w0, method=method, jac=self.gradient, hessp=self.hessianv,
+                          args=(reg_lambda, reg_alpha), options={"gtol": avextol, "maxiter": maxiter}, **kwargs)
+        return res.x
 
     def predict(self, w0, tau_params, V=None, random_state=None):
         """Generate a predicted spike train

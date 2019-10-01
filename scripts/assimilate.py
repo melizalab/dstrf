@@ -38,7 +38,7 @@ class ParseKeyVal(argparse.Action):
         setattr(namespace, self.dest, kv)
 
 
-def xvalidate(mlest, cf):
+def xvalidate(mlest, cf, **kwargs):
     """ Use cross-validation to find optimial l1 and l2 regularization params
 
     - mlest: initialized maximum likelihood estimator
@@ -53,7 +53,7 @@ def xvalidate(mlest, cf):
     scores = []
     results = []
 
-    for reg, s, w in crossvalidate.elasticnet(mlest, 4, reg_grid, l1_ratios, avextol=1e-5, disp=False):
+    for reg, s, w in crossvalidate.elasticnet(mlest, 4, reg_grid, l1_ratios, avextol=1e-5, disp=False, **kwargs):
         scores.append(s)
         results.append((reg, s, w))
         print(" - alpha={:.2}, lambda={:.2}: {}".format(reg[0], reg[1], s))
@@ -66,6 +66,7 @@ if __name__ == "__main__":
 
     p = argparse.ArgumentParser(description="sample from posterior of simulated dat")
     p.add_argument("--restart", "-r", help="start with parameters from output of previous run")
+    p.add_argument("--constrained", action="store_true", help="use constrained maximum likelihood estimator")
     p.add_argument("--xval", "-x", action="store_true", help="use cross-validation to optimize regularization params")
     p.add_argument("--mcmc", "-m", action="store_true", help="use MCMC to sample from posterior distribution")
     p.add_argument("--save-chain", action="store_true", help="for MCMC, store complete chain in output file")
@@ -129,9 +130,18 @@ if __name__ == "__main__":
         print("receptive field is rank {}".format(krank))
         mlest = mle.matfact(data["stim"], kcosbas, krank, data["spike_v"], data["spike_h"], data["stim_dt"], data["spike_dt"])
 
+    if args.constrained:
+        print("setting up parameter inequality constraints")
+        nparams = 1 + mlest.n_hparams + mlest.n_kparams
+        constraint = models.matconstraint(nparams, cf.model.ataus[0], cf.model.ataus[1], cf.model.t_refract)
+        optargs = {"method": "trust-constr", "constraints": [constraint]}
+    else:
+        print("using unconstrained optimization")
+        optargs = {}
+
     if args.xval:
         print("cross-validating to find optimal regularization parameters")
-        (rf_alpha, rf_lambda), loglike, w0 = xvalidate(mlest, cf)
+        (rf_alpha, rf_lambda), loglike, w0 = xvalidate(mlest, cf, **optargs)
     elif args.restart:
         print("restarting from parameter estimates in {}".format(args.restart))
         results = np.load(args.restart)
@@ -148,7 +158,7 @@ if __name__ == "__main__":
             rf_alpha = cf.model.prior.l2
         except AttributeError:
             rf_alpha = 0.0
-        w0 = mlest.estimate(reg_alpha=rf_alpha, reg_lambda=rf_lambda)
+        w0 = mlest.estimate(reg_alpha=rf_alpha, reg_lambda=rf_lambda, **optargs)
     print(" - regularization params: alpha={:2}, lambda={:2}".format(rf_alpha, rf_lambda))
     print(" - MLE rate and adaptation parameters:", w0[:3])
 

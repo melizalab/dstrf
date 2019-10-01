@@ -271,6 +271,13 @@ class matfact(mat):
         self.gradient = function([w, In(reg_lambda, value=0.), In(reg_alpha, value=0.)], dL)
         self.hessianv = function([w, v, In(reg_lambda, value=0.), In(reg_alpha, value=0.)], ddLv)
 
+    @property
+    def n_kparams(self):
+        nframes, nk = self._X_stim.shape
+        nkf = self._nchannels * self._rank
+        nkt = nk // self._nchannels * self._rank
+        return nkt + nkf
+
     def param0(self, random_seed=10, random_sd=0.1):
         """Returns a parameter vector with a good starting guess
 
@@ -281,15 +288,11 @@ class matfact(mat):
         """
         from numpy import random
         random.seed(random_seed)
-        nframes, nk = self._X_stim.shape
-        nkf = self._nchannels * self._rank
-        nkt = nk // self._nchannels * self._rank
-        kdim = nkt + nkf
         nbins, hdim, ntrials = self._X_spike.shape
         meanrate = self._spikes.sum(0).mean() / nbins
         return np.r_[np.exp(meanrate),
                      np.zeros(hdim),
-                     random_sd * random.randn(kdim)].astype(self.dtype)
+                     random_sd * random.randn(self.n_kparams)].astype(self.dtype)
 
     def strf(self, w):
         """Returns the full-rank RF"""

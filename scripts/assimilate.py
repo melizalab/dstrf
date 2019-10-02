@@ -56,8 +56,8 @@ def xvalidate(mlest, cf, **kwargs):
     results = []
 
     steps = len(l1_ratios) * len(reg_grid)
-    hfmt = "{:>6}  {:>6}  {:>15}  {:>10}  {:>10}"
-    dfmt = "{:>6.2g}  {:>6.2g}  {:>15.5g} {:>10}  {:>10}"
+    hfmt = "{:>8}  {:>8}  {:>15}  {:>10}  {:>10}"
+    dfmt = "{:>8.2g}  {:>8.2g}  {:>15.5g} {:>10}  {:>10}"
     hdr = hfmt.format("α", "λ", "likelihood", "time", "ETA")
     print(hdr)
     print("-" * len(hdr))

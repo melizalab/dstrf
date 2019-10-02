@@ -29,10 +29,11 @@ data:
   dt: 10.0
   trials: 5
 emcee:
-  nsteps: 200
+  nburnin: 5000
+  nsteps: 1000
   nthreads: 8
-  nwalkers: 500
-  startpos_scale: 2.0
+  nwalkers: 1000
+  startpos_scale: 0.001
   bounds:
   - [0, 20]
   - [-50, 200]

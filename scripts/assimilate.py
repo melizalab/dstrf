@@ -77,7 +77,7 @@ def xvalidate(mlest, cf, **kwargs):
 
 if __name__ == "__main__":
 
-    p = argparse.ArgumentParser(description="sample from posterior of simulated dat")
+    p = argparse.ArgumentParser(description="assimilate GLM model to simulated or real spike data")
     p.add_argument("--restart", "-r", help="start with parameters from output of previous run")
     p.add_argument("--constrained", action="store_true", help="use constrained maximum likelihood estimator")
     p.add_argument("--xval", "-x", action="store_true", help="use cross-validation to optimize regularization params")

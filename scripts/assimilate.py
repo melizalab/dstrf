@@ -46,17 +46,30 @@ def xvalidate(mlest, cf, **kwargs):
 
     Returns (rf_alpha, rf_lambda), loglike, best_params
     """
+    import time
     from dstrf import crossvalidate
+    import progressbar as pb
 
     l1_ratios = cf.xvalidate.l1_ratios
     reg_grid = np.logspace(cf.xvalidate.grid.lower, cf.xvalidate.grid.upper, cf.xvalidate.grid.count)[::-1]
     scores = []
     results = []
 
+    steps = len(l1_ratios) * len(reg_grid)
+    hfmt = "{:>6}  {:>6}  {:>15}  {:>10}  {:>10}"
+    dfmt = "{:>6.2g}  {:>6.2g}  {:>15.5g} {:>10}  {:>10}"
+    hdr = hfmt.format("α", "λ", "likelihood", "time", "ETA")
+    print(hdr)
+    print("-" * len(hdr))
+    start = time.time()
+    step = 0
     for reg, s, w in crossvalidate.elasticnet(mlest, 4, reg_grid, l1_ratios, avextol=1e-5, **kwargs):
+        step += 1
+        now = time.time()
+        eta = ((now - start) / (step)) * (steps - step)
         scores.append(s)
         results.append((reg, s, w))
-        print(" - alpha={:.2}, lambda={:.2}: {}".format(reg[0], reg[1], s))
+        print(dfmt.format(reg[0], reg[1], s, pb.Timer.format_time(now - start), pb.Timer.format_time(eta)))
 
     best_idx = np.argmax(scores)
     return results[best_idx]

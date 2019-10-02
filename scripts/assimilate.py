@@ -69,7 +69,8 @@ def xvalidate(mlest, cf, **kwargs):
         eta = ((now - start) / (step)) * (steps - step)
         scores.append(s)
         results.append((reg, s, w))
-        print(dfmt.format(reg[0], reg[1], s, pb.Timer.format_time(now - start), pb.Timer.format_time(eta)))
+        print(dfmt.format(reg[0], reg[1], s, pb.Timer.format_time(now - start), pb.Timer.format_time(eta)),
+              flush=True)
 
     best_idx = np.argmax(scores)
     return results[best_idx]

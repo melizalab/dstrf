@@ -168,7 +168,6 @@ if __name__ == "__main__":
         # emcee requirement)
         print("sampling from the posterior")
         print(" - walkers: {}".format(cf.emcee.nwalkers))
-        print(" - steps: {}".format(cf.emcee.nsteps))
         if sys.platform == 'darwin':
             cf.emcee.nthreads = 1
 
@@ -211,12 +210,16 @@ if __name__ == "__main__":
             # p0 = startpos.normal_independent(cf.emcee.nwalkers, w0, 1e-4)
             nburnin = cf.emcee.get("nburnin", 50)
             print(" - burn-in sampler for {} steps".format(nburnin))
-            pos, prob, state = sampler.run_mcmc(p0, nburnin)
+            tracker = utils.convergence_tracker(nburnin, skip=25, start=step)
+            for step, pos, prob, _ in tracker(sampler.sample(p0, storechain=False, iterations=nburnin)):
+                continue
             sampler.reset()
 
+        print(" - replacing zero-probability chains")
         utils.replace_invalid_walkers(pos, prob)
 
         tracker = utils.convergence_tracker(cf.emcee.nsteps, skip=25, start=step)
+        print(" - begin sampling: {} steps".format(cf.emcee.nsteps))
         for step, pos, prob, _ in tracker(sampler.sample(pos,
                                                          lnprob0=prob,
                                                          storechain=args.save_chain,

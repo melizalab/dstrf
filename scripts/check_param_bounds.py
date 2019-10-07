@@ -32,4 +32,4 @@ if __name__ == "__main__":
             if matboundprior(w0):
                 print("{}\tOK".format(path))
             else:
-                print("{}\tout of bounds".format(path))
+                print("{}\tout of bounds ({:>.4}, {:>.4})".format(path, w0[1], w0[2]))

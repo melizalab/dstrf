@@ -16,4 +16,4 @@ export OMP_NUM_THREADS=1
 export THEANO_FLAGS="base_compiledir=/scratch/cdm8j/.theano_${SLURM_ARRAY_TASK_ID}"
 CELL=${SLURM_ARRAY_TASK_ID}
 
-python scripts/assimilate.py -k data.root=/scratch/cdm8j/dstrf_sim -k data.filter.rf=${CELL} -k data.dynamics.model=models/tonic.yml --xval config/song_dynamical.yml /scratch/cdm8j/dstrf/results/xval/tonic_${CELL}_xval.npz
+python scripts/assimilate.py -k data.root=/scratch/cdm8j/dstrf_sim -k data.filter.rf=${CELL} -k data.dynamics.model=models/tonic.yml --xval ${APARAMS} config/song_dynamical.yml /scratch/cdm8j/dstrf/results/xval/tonic_${CELL}_xval.npz

@@ -165,7 +165,8 @@ class mat(object):
         return np.r_[np.exp(meanrate),
                      np.zeros(hdim + self.n_kparams)].astype(self.dtype)
 
-    def estimate(self, w0=None, reg_lambda=0, reg_alpha=0, avextol=1e-6, maxiter=300, method='trust-krylov', **kwargs):
+    def estimate(self, w0=None, reg_lambda=0, reg_alpha=0, gtol=1e-6, maxiter=300,
+                 method='trust-krylov', **kwargs):
         """Compute max-likelihood estimate of the model parameters
 
         w0: initial guess at parameters. If not supplied (default), sets omega
@@ -179,7 +180,9 @@ class mat(object):
             w0 = self.param0()
 
         res = op.minimize(self.loglike, w0, method=method, jac=self.gradient, hessp=self.hessianv,
-                          args=(reg_lambda, reg_alpha), options={"gtol": avextol, "maxiter": maxiter}, **kwargs)
+                          args=(reg_lambda, reg_alpha),
+                          options={"gtol": gtol, "maxiter": maxiter},
+                          **kwargs)
         return res.x
 
     def predict(self, w0, tau_params, V=None, random_state=None):

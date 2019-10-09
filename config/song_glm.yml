@@ -44,6 +44,7 @@ data:
   trials: 10
   test_proportion: 0.2
 xvalidate:
+  gtol: 0.01
   grid:
     lower: -1
     upper: 5

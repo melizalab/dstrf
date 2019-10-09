@@ -26,6 +26,7 @@ def xvalidate(mlest, cf, **kwargs):
     from dstrf import crossvalidate
     import progressbar as pb
 
+    gtol = cf.xvalidate.get("gtol", 1e-5)
     l1_ratios = cf.xvalidate.l1_ratios
     reg_grid = np.logspace(cf.xvalidate.grid.lower, cf.xvalidate.grid.upper, cf.xvalidate.grid.count)[::-1]
     scores = []
@@ -39,7 +40,7 @@ def xvalidate(mlest, cf, **kwargs):
     print("-" * len(hdr))
     start = time.time()
     step = 0
-    for reg, s, w in crossvalidate.elasticnet(mlest, 4, reg_grid, l1_ratios, avextol=1e-5, **kwargs):
+    for reg, s, w in crossvalidate.elasticnet(mlest, 4, reg_grid, l1_ratios, gtol=gtol, **kwargs):
         step += 1
         now = time.time()
         eta = ((now - start) / (step)) * (steps - step)

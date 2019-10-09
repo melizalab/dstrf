@@ -34,6 +34,7 @@ spike_detect:
   rise_dt: 1.0
 xvalidate:
   gtol: 0.01
+  early_stop: 3
   grid:
     lower: -1
     upper: 5

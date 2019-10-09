@@ -11,7 +11,7 @@ model:
     l2: 30.792410553301334
 data:
   source: "crcns"
-  root: "/home/data/crcns"
+  root: "crcns"
   cell: "blabla0903_2_B"
   stimulus:
     stim_type: "conspecific"

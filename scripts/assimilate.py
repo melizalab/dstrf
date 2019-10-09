@@ -27,26 +27,29 @@ def xvalidate(mlest, cf, **kwargs):
     import progressbar as pb
 
     gtol = cf.xvalidate.get("gtol", 1e-5)
+    early_stop = cf.xvalidate.get("early_stop", False)
     l1_ratios = cf.xvalidate.l1_ratios
     reg_grid = np.logspace(cf.xvalidate.grid.lower, cf.xvalidate.grid.upper, cf.xvalidate.grid.count)[::-1]
     scores = []
     results = []
 
     steps = len(l1_ratios) * len(reg_grid)
-    hfmt = "{:>8}  {:>8}  {:>15}  {:>10}  {:>10}"
-    dfmt = "{:>8.2g}  {:>8.2g}  {:>15.5g} {:>10}  {:>10}"
-    hdr = hfmt.format("α", "λ", "likelihood", "time", "ETA")
+    print(" - expected number of steps: {}".format(steps))
+    if early_stop:
+        print(" - will stop if score decreases for more than {} steps".format(early_stop))
+    hfmt = "{:>5}  {:>8}  {:>8}  {:>15}  {:>10}  {:>10}"
+    dfmt = "{:>5}  {:>8.2g}  {:>8.2g}  {:>15.5g} {:>10}  {:>10}"
+    hdr = hfmt.format("step", "α", "λ", "likelihood", "time", "ETA")
     print(hdr)
     print("-" * len(hdr))
     start = time.time()
-    step = 0
-    for reg, s, w in crossvalidate.elasticnet(mlest, 4, reg_grid, l1_ratios, gtol=gtol, **kwargs):
-        step += 1
+    for step, reg, s, w in crossvalidate.elasticnet(mlest, 4, reg_grid, l1_ratios, gtol=gtol,
+                                                    early_stop=early_stop, **kwargs):
         now = time.time()
-        eta = ((now - start) / (step)) * (steps - step)
+        eta = ((now - start) / (step + 1)) * (steps - step - 1)
         scores.append(s)
         results.append((reg, s, w))
-        print(dfmt.format(reg[0], reg[1], s, pb.Timer.format_time(now - start), pb.Timer.format_time(eta)),
+        print(dfmt.format(step, reg[0], reg[1], s, pb.Timer.format_time(now - start), pb.Timer.format_time(eta)),
               flush=True)
 
     best_idx = np.argmax(scores)

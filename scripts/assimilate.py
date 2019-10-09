@@ -11,31 +11,7 @@ import numpy as np
 from munch import Munch
 import emcee
 from emcee_tools import priors, utils, startpos
-from dstrf import io, data, simulate, models, strf, mle
-
-
-def assoc_in(dct, path, value):
-    for x in path:
-        prev, dct = dct, dct.setdefault(x, {})
-    prev[x] = value
-
-
-class ParseKeyVal(argparse.Action):
-
-    def __call__(self, parser, namespace, arg, option_string=None):
-        kv = getattr(namespace, self.dest)
-        if kv is None:
-            kv = dict()
-        if not arg.count('=') == 1:
-            raise ValueError(
-                "-k %s argument badly formed; needs key=value" % arg)
-        else:
-            key, val = arg.split('=')
-            try:
-                kv[key] = json.loads(val)
-            except json.decoder.JSONDecodeError:
-                kv[key] = val
-        setattr(namespace, self.dest, kv)
+from dstrf import io, data, simulate, models, strf, mle, util
 
 
 def xvalidate(mlest, cf, **kwargs):
@@ -87,7 +63,7 @@ if __name__ == "__main__":
     p.add_argument("--save-data", action="store_true", help="store assimilation data in output file")
     p.add_argument("--update-config", "-k",
                    help="set configuration parameter. Use JSON literal. example: -k data.filter.rf=20",
-                   action=ParseKeyVal, default=dict(), metavar="KEY=VALUE")
+                   action=util.ParseKeyVal, default=dict(), metavar="KEY=VALUE")
     p.add_argument("--skip-completed", "-s", action="store_true", help="skip run if output file exists")
     p.add_argument("config", help="path to configuration yaml file")
     p.add_argument("outfile", help="path to output npz file")
@@ -102,7 +78,7 @@ if __name__ == "__main__":
 
     for k, v in args.update_config.items():
         path = k.split(".")
-        assoc_in(cf, path, v)
+        util.assoc_in(cf, path, v)
 
     model_dt = cf.model.dt
     ncos = cf.model.filter.ncos

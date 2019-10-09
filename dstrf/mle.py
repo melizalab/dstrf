@@ -27,6 +27,9 @@ class mat(object):
         self.dtype = config.floatX
         # this is needed to prevent compiler errors in clang
         config.gcc.cxxflags = "-Wno-c++11-narrowing"
+        # compiler optimizations:
+        #config.gcc.cxxflags += "-O3 -ffast-math -ftree-loop-distribution -funroll-loops -ftracer"
+        config.gcc.cxxflags += " -O3 -ffast-math -funroll-loops"
 
         if stim.ndim == 1:
             stim = np.expand_dims(stim, 0)

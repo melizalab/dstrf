@@ -11,7 +11,7 @@ model:
     l2: 30.792410553301334
 data:
   source: "crcns"
-  root: "crcns"
+  root: "/home/data/crcns"
   cell: "blabla0903_2_B"
   stimulus:
     stim_type: "conspecific"
@@ -30,6 +30,7 @@ spike_detect:
   rise_dt: 1.0
 xvalidate:
   gtol: 0.01
+  early_stop: 3
   grid:
     lower: -1
     upper: 5

@@ -7,6 +7,12 @@ from __future__ import print_function, division
 import numpy as np
 
 
+def randomize_stimuli(data, random_seed=10):
+    """Randomly shuffle stimuli in a dataset"""
+    pass
+
+
+
 def randn(cf, random_seed=None):
     """Gaussian white noise.
 

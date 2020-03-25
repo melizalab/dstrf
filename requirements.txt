@@ -38,7 +38,7 @@ scipy==1.0.1
 seaborn==0.9.0
 simplegeneric==0.8.1
 six==1.11.0
-spyks==0.6.5
+spyks==0.6.10
 sympy==1.2
 Theano==1.0.1
 tornado==5.1

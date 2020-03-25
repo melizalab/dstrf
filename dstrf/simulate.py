@@ -142,6 +142,17 @@ def multivariate_dynamical(cf, data, random_seed=None, trials=None):
     print(" - stimulus dimension: {}". format(n_freq))
 
     pymodel = spkc.load_model(cf.data.dynamics.model)
+    if "param" in cf.data.dynamics:
+        print(" - updating parameters in model:")
+        for k, v in cf.data.dynamics.param.items():
+            old = spkc.get_param_value(pymodel, k)
+            if isinstance(v, (float, int)):
+                new = v * old.units
+            else:
+                new = spkc.parse_quantity(v)
+            spkc.set_param_value(pymodel, k, new)
+            print("    + {}: {} -> {}".format(k, old, new))
+
     biocm_params = spkc.to_array(pymodel["parameters"])
     biocm_state0 = spkc.to_array(pymodel["state"])
     biocm_model = spkc.load_module(pymodel, os.path.dirname(cf.data.dynamics.model))

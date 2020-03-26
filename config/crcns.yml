@@ -25,6 +25,7 @@ data:
   prepadding: 50.0
   dt: 1.0
   test_proportion: 0.2
+  test_trials: 50
 spike_detect:
   thresh: -20.0
   rise_dt: 1.0

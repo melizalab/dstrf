@@ -30,6 +30,6 @@ if __name__ == "__main__":
         else:
             w0 = results["mle"]
             if matboundprior(w0):
-                print("{}\tOK".format(path))
+                print("{}\t{}\tOK".format(path, w0[:3]))
             else:
-                print("{}\tout of bounds ({:>.4}, {:>.4})".format(path, w0[1], w0[2]))
+                print("{}\t{}\tout of bounds".format(path, w0[:3]))

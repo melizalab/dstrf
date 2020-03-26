@@ -70,6 +70,35 @@ def crcns(cf):
     return data
 
 
+def neurobank(cf):
+    """Loads responses from a neurobank data set. Pads the stimuli and preprocesses the spikes.
+
+    cf.data.dt
+    cf.data.cell
+    cf.data.stimulus.spectrogram.window
+    cf.data.stimulus.spectrogram.f_min
+    cf.data.stimulus.spectrogram.f_max
+    cf.data.stimulus.spectrogram.compress
+    cf.data.stimulus.spectrogram.gammatone
+    cf.data.stimulus.spectrogram.prepad
+    cf.model.filter.len
+    cf.model.dt
+    cf.model.ataus
+    """
+    from dstrf import io
+    cspec = cf.data.stimulus.spectrogram
+    # default option for cell when we just care about the stimuli
+    cell = cf.data.get("cell", "st348_4_6_4")
+    data = io.load_neurobank(cell,
+                             step=cf.data.dt,
+                             **cspec)
+
+    io.pad_stimuli(data, cf.data.prepadding, cf.model.filter.len * cf.data.dt, fill_value=0.0)
+    io.preprocess_spikes(data, cf.model.dt, cf.model.ataus)
+    return data
+
+
+
 def dstrf_sim(cf):
     """Songs from the dstrf_sim data set
 

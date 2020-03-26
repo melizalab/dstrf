@@ -17,4 +17,4 @@ export THEANO_FLAGS="base_compiledir=/scratch/cdm8j/.theano_${SLURM_ARRAY_TASK_I
 CELLFILE="/scratch/cdm8j/crcns/cell_stim_classes.csv"
 CELL=$(grep conspecific ${CELLFILE} | awk "{if (NR==${SLURM_ARRAY_TASK_ID}+1) {print \$1}}" | cut -d "," -f 1)
 
-python scripts/predict.py -k data.root=/scratch/cdm8j/crcns -k data.cell=${CELL} -p /scratch/cdm8j/dstrf/results/params/{}_params.json config/crcns.yml /scratch/cdm8j/dstrf/results/xval/crcns_${CELL}_xval.npz
+python scripts/predict.py -k data.root=/scratch/cdm8j/crcns -k data.cell=${CELL} -p /scratch/cdm8j/dstrf/results/params/${CELL}_params.json config/crcns.yml /scratch/cdm8j/dstrf/results/xval/crcns_${CELL}_xval.npz

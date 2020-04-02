@@ -92,7 +92,10 @@ if __name__ == "__main__":
     stim_fun = getattr(data, cf.data.source)
     data     = stim_fun(cf)
 
-    p_test = cf.data.get("test_proportion", None)
+    try:
+        p_test = cf.data.test.proportion
+    except AttributeError:
+        p_test = None
     assim_data = io.subselect_data(data, p_test)
 
     if "model" in cf.data:

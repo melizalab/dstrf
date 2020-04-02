@@ -29,6 +29,9 @@ data:
     random_seed: 1
   dt: 10.0
   trials: 10
+  test:
+    random_seed: 1000
+    trials: 50
 spike_detect:
   thresh: -20.0
   rise_dt: 1.0

@@ -11,7 +11,10 @@ from dstrf import io, data, simulate, models, strf, mle, spikes, performance, ut
 
 def predict_mle(mltest, params, cf):
     nbins, ntrials = mltest.spikes.shape
-    ntrials = cf.data.get('test_trials', ntrials)
+    try:
+        ntrials = cf.data.test.trials
+    except AttributeError:
+        pass
     pred_spikes = np.zeros((nbins, ntrials), dtype=mltest.spikes.dtype)
     V = mltest.V(params)
     for i in range(ntrials):
@@ -22,7 +25,10 @@ def predict_mle(mltest, params, cf):
 
 def predict_posterior(mltest, samples, cf):
     nbins, ntrials = mltest.spikes.shape
-    ntrials = cf.data.get('test_trials', ntrials)
+    try:
+        ntrials = cf.data.test.trials
+    except AttributeError:
+        pass
     pred_spikes = np.zeros((nbins, ntrials), dtype=mltest.spikes.dtype)
     indices = np.random.permutation(cf.emcee.nwalkers)[:ntrials]
     for i, idx in enumerate(indices):
@@ -62,17 +68,21 @@ if __name__ == "__main__":
     print("loading results of assimilation from {}".format(args.fitfile))
     fit = np.load(args.fitfile)
 
+
     print("loading/generating data using", cf.data.source)
+    try:
+        cf.data.stimulus.random_seed = cf.data.test.random_seed
+        print(" - setting random seed for test to {}".format(seed))
+    except AttributeError:
+        pass
     stim_fun = getattr(data, cf.data.source)
     data     = stim_fun(cf)
 
-    p_test = cf.data.get("test_proportion", None)
-    if p_test is None:
-        test_data  = stim_fun(cf, random_seed=1000)
-    else:
-        n_test = int(p_test * len(data))
-        print("using last {} stimuli for test".format(n_test))
-        test_data = data[-n_test:]
+    try:
+        p_test = cf.data.test.proportion
+    except AttributeError:
+        p_test = None
+    test_data = io.subselect_data(data, p_test, first=False)
 
     if "model" in cf.data:
         print("simulating response for testing using {}".format(cf.data.model))

@@ -72,7 +72,8 @@ data:
       gammatone: True
   prepadding: 50.0
   dt: 1.0
-  test_trials: 50
+  test:
+    trials: 50
 spike_detect:
   thresh: -20.0
   rise_dt: 1.0

@@ -93,13 +93,7 @@ if __name__ == "__main__":
     data     = stim_fun(cf)
 
     p_test = cf.data.get("test_proportion", None)
-    if p_test is None:
-        assim_data = data
-        test_data  = stim_fun(cf, random_seed=1000)
-    else:
-        n_test = int(p_test * len(data))
-        print("reserving last {} stimuli for test".format(n_test))
-        assim_data = data[:-n_test]
+    assim_data = io.subselect_data(data, p_test)
 
     if "model" in cf.data:
         print("simulating response using {}".format(cf.data.model))

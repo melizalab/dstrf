@@ -115,7 +115,7 @@ def load_dstrf_sim(cell, root, window, step, **specargs):
         return out
 
 
-def load_neurobank(cell, window, step, **specargs):
+def load_neurobank(cell, window, step, stimuli=None, **specargs):
     """ Load stimulus file and response data from neurobank repository """
     import itertools
     from nbank import find
@@ -126,6 +126,8 @@ def load_neurobank(cell, window, step, **specargs):
         data = json.load(fp)
         trials = sorted(data['pprox'], key=lambda x: (x['stimulus'], x['trial']))
         for stimname, trials in itertools.groupby(trials, lambda x: x['stimulus']):
+            if stimuli is not None and stimname not in stimuli:
+                continue
             try:
                 stimfile = next(find(stimname, local_only=True))
             except StopIteration:
@@ -227,7 +229,6 @@ def pad_stimuli(data, before, after, fill_value=None):
 
 
 def preprocess_spikes(data, dt, sphist_taus):
-
     """Preprocess spike times in data
 
     Spike times are binned into intervals of duration dt. The times are
@@ -267,6 +268,37 @@ def preprocess_spikes(data, dt, sphist_taus):
         d["spike_h"] = spike_h
         d["spike_dt"] = dt
     return data
+
+
+def clip_trials(data):
+    """Remove extra trials from data, modifying in place.
+
+    Do this before any other preprocessing steps.
+
+    """
+    ntrials = [len(d["spikes"]) for d in data]
+    limit = min(ntrials)
+    for d in data:
+        d["spikes"] = d["spikes"][:limit]
+    return data
+
+
+def subselect_data(seq, proportion, first=True):
+    """ Select a subset of data for fitting or prediction.
+
+    seq - the data to subdivide
+    proportion - the proportion to keep
+    first - if true, keep the first part of the data
+    """
+    if not proportion:
+        print(" - using all the data")
+        return seq
+    n_test = int(proportion * len(seq))
+    print(" - reserving last {} stimuli for test".format(n_test))
+    if first:
+        return seq[:-n_test]
+    else:
+        return seq[-n_test:]
 
 
 def merge_data(seq):

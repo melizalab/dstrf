@@ -23,19 +23,24 @@ if __name__ == "__main__":
         cf = Munch.fromYAML(fp)
     stim_fun = getattr(data, cf.data.source)
 
-    print("cell\tduration\tspikes\trate\teo.cc")
+    print("cell\ttrials\tstims\tduration\tspikes\trate\teo.cc")
     for cell in args.cells:
         try:
             cf.data.cell = cell
             raw_data = stim_fun(cf)
             data = io.merge_data(raw_data)
             upsample = int(args.binsize / cf.model.dt)
+            stims = len(raw_data)
+            trials = data["spike_v"].shape[1]
             eo = performance.corrcoef(data["spike_v"][::2], data["spike_v"][1::2], upsample, 1)
             rate = 1000 * np.sum(data["spike_v"]) / data["duration"] / data["spike_v"].shape[1]
-            print("{}\t{}\t{}\t{:3.3}\t{:3.3}".format(cell,
-                                                      data["duration"],
-                                                      np.sum(data["spike_v"]),
-                                                      rate,
-                                                      eo))
+            print("{}\t{}\t{}\t{}\t{}\t{:3.3}\t{:3.3}".format(
+                cell,
+                stims,
+                trials,
+                data["duration"],
+                np.sum(data["spike_v"]),
+                rate,
+                eo))
         except Exception as e:
             print("{}\terror:{}".format(cell, e))

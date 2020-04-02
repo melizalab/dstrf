@@ -75,6 +75,7 @@ def neurobank(cf):
 
     cf.data.dt
     cf.data.cell
+    cf.data.stimulus.include (list of stimuli to include in analysis)
     cf.data.stimulus.spectrogram.window
     cf.data.stimulus.spectrogram.f_min
     cf.data.stimulus.spectrogram.f_max
@@ -91,8 +92,13 @@ def neurobank(cf):
     cell = cf.data.get("cell", "st348_4_6_4")
     data = io.load_neurobank(cell,
                              step=cf.data.dt,
+                             stimuli=cf.data.stimulus.get("include", None),
                              **cspec)
-
+    # A lot cells in this dataset have an unequal number of trials per stimulus.
+    # In principle, this would not be an issue, but because of how multiple
+    # trials are handled to avoid repeating the stimulus and using up tons of
+    # memory, we have to clip the extra trials
+    io.clip_trials(data)
     io.pad_stimuli(data, cf.data.prepadding, cf.model.filter.len * cf.data.dt, fill_value=0.0)
     io.preprocess_spikes(data, cf.model.dt, cf.model.ataus)
     return data

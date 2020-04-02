@@ -13,4 +13,4 @@ to.run  <- filter(df.stats, duration > 40000, spikes > 500, eo.cc > 0.4) %>%
     inner_join(filter(df.regions, area!="None"), by="cell") %>%
     inner_join(df.bounds)
 
-write_tsv(to.run, "crcns_needs_constrained.csv")
+write_tsv(to.run, "config/crcns_torun.tbl")

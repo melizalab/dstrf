@@ -262,6 +262,8 @@ def preprocess_spikes(data, dt, sphist_taus):
         spike_h = np.zeros((nbins, ntaus, ntrials), dtype='d')
         for i, trial in enumerate(d["spikes"]):
             idx = (trial / dt).astype('i')
+            # make sure all spikes are in bounds
+            idx = idx[(idx >= 0) & (idx < nbins)]
             spike_v[idx, i] = 1
             spike_h[:, :, i] = adaptation(spike_v[:, i], sphist_taus, dt)
         d["spike_v"] = spike_v

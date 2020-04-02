@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH -n 1
 #SBATCH -t 100:00:00
-#SBATCH -o crcns_%a_xval_constrained.log
+#SBATCH -o crcns_%a_xval.log
 #SBATCH -p dev
 #SBATCH -A meliza
 
@@ -14,8 +14,8 @@ source activate dstrf
 
 export OMP_NUM_THREADS=1
 export THEANO_FLAGS="base_compiledir=/scratch/cdm8j/.theano_${SLURM_ARRAY_TASK_ID}"
-CELLFILE="/home/cdm8j/dstrf/crcns_needs_constrained.csv"
+CELLFILE="/home/cdm8j/dstrf/config/crcns_torun.tbl"
 CELL=$(awk "{if (NR==${SLURM_ARRAY_TASK_ID}+1) {print \$1}}" < ${CELLFILE})
 
 echo "analyzing ${CELL}"
-python scripts/assimilate.py -k data.root=/scratch/cdm8j/crcns -k data.cell=${CELL} --xval --constrained config/crcns.yml /scratch/cdm8j/dstrf/results/xvalc/crcns_${CELL}_xval.npz
+# python scripts/assimilate.py -k data.root=/scratch/cdm8j/crcns -k data.cell=${CELL} ${APARAMS} config/crcns.yml /scratch/cdm8j/dstrf/results/xvalc/crcns_${CELL}_xval.npz

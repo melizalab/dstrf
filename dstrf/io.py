@@ -129,7 +129,7 @@ def load_neurobank(cell, window, step, stimuli=None, alt_base=None, **specargs):
         for stimname, trials in itertools.groupby(trials, lambda x: x['stimulus']):
             if stimuli is not None and stimname not in stimuli:
                 continue
-            stimfile = nbank.get(stimname, local_only=True)
+            stimfile = nbank.get(stimname, local_only=True, alt_base=alt_base)
             if stimfile is None:
                 continue
             spec, dur = load_stimulus(stimfile, window, step, **specargs)

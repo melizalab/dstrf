@@ -115,11 +115,12 @@ def load_dstrf_sim(cell, root, window, step, **specargs):
         return out
 
 
-def load_neurobank(cell, window, step, stimuli=None, **specargs):
+def load_neurobank(cell, window, step, stimuli=None, alt_base=None, **specargs):
     """ Load stimulus file and response data from neurobank repository """
     import itertools
-    from nbank import find
-    unitfile = next(find(cell, local_only=True))
+    import nbank
+    unitfile = nbank.get(cell, local_only=True, alt_base=alt_base)
+    print(" - responses loaded from:", unitfile)
     # first load and collate the responses, then load the stimuli
     out = []
     with open(unitfile, 'rU') as fp:
@@ -128,10 +129,8 @@ def load_neurobank(cell, window, step, stimuli=None, **specargs):
         for stimname, trials in itertools.groupby(trials, lambda x: x['stimulus']):
             if stimuli is not None and stimname not in stimuli:
                 continue
-            try:
-                stimfile = next(find(stimname, local_only=True))
-            except StopIteration:
-                # no match with stimulus
+            stimfile = nbank.get(stimname, local_only=True)
+            if stimfile is None:
                 continue
             spec, dur = load_stimulus(stimfile, window, step, **specargs)
             out.append({"cell_name": cell,

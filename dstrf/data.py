@@ -74,6 +74,7 @@ def neurobank(cf):
     """Loads responses from a neurobank data set. Pads the stimuli and preprocesses the spikes.
 
     cf.data.dt
+    cf.data.root (specify alternate base for archive paths)
     cf.data.cell
     cf.data.stimulus.include (list of stimuli to include in analysis)
     cf.data.stimulus.spectrogram.window
@@ -93,6 +94,7 @@ def neurobank(cf):
     data = io.load_neurobank(cell,
                              step=cf.data.dt,
                              stimuli=cf.data.stimulus.get("include", None),
+                             alt_base=cf.data.get("root", None),
                              **cspec)
     # A lot cells in this dataset have an unequal number of trials per stimulus.
     # In principle, this would not be an issue, but because of how multiple

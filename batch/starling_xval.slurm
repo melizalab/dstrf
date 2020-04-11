@@ -12,9 +12,10 @@ module load boost/1.68.0
 module load anaconda/5.2.0-py3.6
 source activate dstrf
 
+let TMPIDX=${SLURM_ARRAY_TASK_ID}+1000
 export OMP_NUM_THREADS=1
-export THEANO_FLAGS="base_compiledir=/scratch/cdm8j/.theano_${SLURM_ARRAY_TASK_ID}"
-CELLFILE="/home/cdm8j/dstrf/config/starling_torun.tbl"
+export THEANO_FLAGS="base_compiledir=/scratch/cdm8j/.theano_${TMPIDX}"
+: ${CELLFILE:="/home/cdm8j/dstrf/config/starling_torun.tbl"}
 CELL=$(awk "{if (NR==${SLURM_ARRAY_TASK_ID}+1) {print \$1}}" < ${CELLFILE})
 
 echo "analyzing ${CELL}"

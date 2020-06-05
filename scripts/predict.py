@@ -38,9 +38,7 @@ def predict_posterior(mltest, samples, cf):
         pred_spikes[:, i] = S
     return pred_spikes
 
-
 if __name__ == "__main__":
-
     import argparse
 
     p = argparse.ArgumentParser(description="predict responses to test stimuli")
@@ -68,10 +66,9 @@ if __name__ == "__main__":
     print("loading results of assimilation from {}".format(args.fitfile))
     fit = np.load(args.fitfile)
 
-
     print("loading/generating data using", cf.data.source)
     try:
-        cf.data.stimulus.random_seed = cf.data.test.random_seed
+        seed = cf.data.stimulus.random_seed = cf.data.test.random_seed
         print(" - setting random seed for test to {}".format(seed))
     except AttributeError:
         pass

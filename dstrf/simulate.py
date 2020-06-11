@@ -94,8 +94,10 @@ def multivariate_glm(cf, data, random_seed=None, trials=None):
     print(" - stimulus dimension: {}". format(n_freq))
     print(" - adaptation parameters: {}". format(cf.data.adaptation))
 
-    np.random.seed(random_seed or cf.data.trial_noise.random_seed)
-    mat.random_seed(random_seed or cf.data.trial_noise.random_seed)
+    seed = random_seed or cf.data.trial_noise.random_seed
+    print(" - seed for I_noise:", seed)
+    np.random.seed(seed)
+    mat.random_seed(seed)
 
     noise_fn = noise_fns[cf.data.trial_noise.get("color", "white")]
 

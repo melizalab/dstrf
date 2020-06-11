@@ -3,11 +3,11 @@
 """This script generates predicted responses using the MLE or full posterior """
 from __future__ import print_function, division
 
-import sys
 import numpy as np
 from munch import Munch
 
 from dstrf import io, data, simulate, models, strf, mle, spikes, performance, util
+
 
 def predict_mle(mltest, params, cf):
     nbins, ntrials = mltest.spikes.shape
@@ -38,6 +38,7 @@ def predict_posterior(mltest, samples, cf):
         pred_spikes[:, i] = S
     return pred_spikes
 
+
 if __name__ == "__main__":
     import argparse
 
@@ -45,6 +46,7 @@ if __name__ == "__main__":
     p.add_argument("--binsize", "-b", type=float, default=10, help="bin size for PSTH (in ms)")
     p.add_argument("--params", "-p",
                    help="output spike history parameters and performance data to this file in json format")
+    p.add_argument("--save-data", help="save the test data and prediction to this file")
     p.add_argument("--update-config", "-k",
                    help="set configuration parameter. Use JSON literal. example: -k data.filter.rf=20",
                    action=util.ParseKeyVal, default=dict(), metavar="KEY=VALUE")
@@ -67,11 +69,8 @@ if __name__ == "__main__":
     fit = np.load(args.fitfile)
 
     print("loading/generating data using", cf.data.source)
-    try:
-        seed = cf.data.stimulus.random_seed = cf.data.test.random_seed
-        print(" - setting random seed for test to {}".format(seed))
-    except AttributeError:
-        pass
+    seed = cf.data.stimulus.random_seed = 19924
+    print(" - setting random seed for test stimulus to {}".format(seed))
     stim_fun = getattr(data, cf.data.source)
     data     = stim_fun(cf)
 
@@ -84,11 +83,14 @@ if __name__ == "__main__":
     if "model" in cf.data:
         print("simulating response for testing using {}".format(cf.data.model))
         data_fun = getattr(simulate, cf.data.model)
-        tdata = io.merge_data(data_fun(cf, test_data, random_seed=1000))
+        tdata = io.merge_data(data_fun(cf, test_data,
+                                       random_seed=cf.data.test.random_seed,
+                                       trials=cf.data.test.trials))
     else:
         tdata = io.merge_data(test_data)
     print(" - duration:", tdata["duration"])
     print(" - stim bins:", tdata["stim"].shape[1])
+    print(" - trials:", tdata["spike_v"].shape[1])
     print(" - spike bins:", tdata["spike_v"].shape[0])
     print(" - total spikes:", np.sum(tdata["spike_v"]))
 
@@ -120,7 +122,6 @@ if __name__ == "__main__":
         if not in_bounds:
             print(" - warning: parameter estimates not in allowed region")
         pred_spikes = predict_mle(mltest, fit["mle"], cf)
-
 
     tspike_v = tdata["spike_v"]
     upsample = int(args.binsize / cf.model.dt)

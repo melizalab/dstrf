@@ -12,7 +12,7 @@ model:
 data:
   stimulus:
     source: "dstrf_sim"
-    root: "/home/data/dstrf_sim"
+    root: "dstrf_sim"
     spectrogram:
       window: 2.5
       compress: 10

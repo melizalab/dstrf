@@ -51,7 +51,7 @@ def hg_dstrf(cf):
               "OmegaF": "f_omega",
               "Pt": "Pt", "Amplitude": "ampl"}
     columns.extend(colmap.keys())
-    print(" - using params from STRF #{rf}".format(**cff))
+    #print(" - using params from STRF #{rf}".format(**cff))
     df = (pd.read_csv(cff["paramfile"], usecols=columns, index_col=[0])
             .rename(columns=colmap)
             .loc[cff["rf"]])

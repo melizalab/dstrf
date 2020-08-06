@@ -164,25 +164,26 @@ if __name__ == "__main__":
     m = re.search(r"glt([0-9]+)_",args.fitfile)
 
     #Plot Expected vs Estimated
-    plt.plot(freq, K1T/K1T.max(), label= "True",color="black")
+    plt.plot(freq, K1T/K1T.max(), label= "Input",color="black")
     #plt.plot(freq, KCONVT/KCONVT.max(), label= "Expected")
     plt.plot(freq, KMLET/KMLET.max(), label = "Estimated",color="red")
     plt.yticks([0,1])
     plt.title("Model: {model}, RF: {rf}".format(model = model_type, rf = rf_type))
     plt.ylabel("Relative Spectral Power")
     plt.xlabel("Frequency (Hz)")
+    plt.xlim([-10,300])
     plt.legend()
     plt.show()
     #plt.savefig('{0}/TimePeakDistortion_{1}_{2}.pdf'.format(args.outfile, model_type, rf_type))
 
-    outrow = [max_true_freq,
-              max_est_freq,
-              pwr_diff_true,
-              pwr_diff_est,
-              Hz0_true_pwr,
-              Hz0_est_pwr,
-              rf_type,
-              int(m.group(1))]
+    #outrow = [max_true_freq,
+    #          max_est_freq,
+    #          pwr_diff_true,
+    #          pwr_diff_est,
+    #          Hz0_true_pwr,
+    #          Hz0_est_pwr,
+    #          rf_type,
+    #          int(m.group(1))]
    # writer = csv.writer(sys.stdout)
     #writer.writerow(outrow)
     

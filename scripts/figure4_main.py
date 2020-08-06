@@ -35,16 +35,6 @@ plt.rcParams['ytick.major.width'] = 0.5
 plt.rcParams['xtick.major.size'] = 1.5
 plt.rcParams['ytick.major.size'] = 1.5
 
-
-
-
-
-
-
-
-
-
-
 def assoc_in(dct, path, value):
     for x in path:
         prev, dct = dct, dct.setdefault(x, {})
@@ -75,7 +65,7 @@ if __name__ == "__main__":
     p.add_argument("--update-config", "-k",
                    help="set configuration parameter. Use JSON literal. example: -k data.filter.rf=20",
                    action=ParseKeyVal, default=dict(), metavar="KEY=VALUE") 
-    p.add_argument("fitfile", help="path to npz file output by assimilate_simulated script")
+    p.add_argument("danfile", help="path to npz file output from dan")
     p.add_argument("predfile", help="path to npz file output by predict_simulated script")
     p.add_argument("outfile", help="path to output pdf file")
 
@@ -87,9 +77,9 @@ if __name__ == "__main__":
         path = k.split(".")
         assoc_in(cf, path, v)
 
-    print("results of assimilation from {}".format(args.fitfile))
-    fitfile = np.load(args.fitfile)
-    fitfile.allow_pickle=True
+    #print("results of assimilation from {}".format(args.fitfile))
+    danfile = np.load(args.danfile)
+    #fitfile.allow_pickle=True
  
     print("loading results of prediction from {}".format(args.predfile))
     predfile = np.load(args.predfile)
@@ -101,7 +91,7 @@ if __name__ == "__main__":
 
     k1, k1t, k1f = simulate.get_filter(cf)
 
-    est = predfile["estimates"]
+    est = predfile["mle"]
     estparams = est[:3]
 
     model_info = cf.data.dynamics.model
@@ -132,47 +122,38 @@ if __name__ == "__main__":
     plt.xticks([])
     plt.yticks([])
 
-    Vpred = predfile["Vpred"]
-    n_trials = predfile["ntrials"]
-    n_trials = 10
+    #Dan file stuff
+    data = danfile
+    V = data["V"]
+    stim = data["stim"].squeeze()
+    tspk = data["spike_v"]
+    pspk = data["pspike_v"]
+    ntrials = min(tspk.shape[1], 10)
 
+    upsample = int(cf.data.dt / cf.model.dt)
+    test_psth = spikes.psth(tspk, upsample, 1)
+    pred_psth = spikes.psth(pspk, upsample, 1)
+    t_psth = np.linspace(0, data["duration"], test_psth.size)
+
+    #Raster
     axes = plt.subplot(g[1,:])
-    for i, spk in enumerate(predfile["spike_t"][0:(n_trials)]): #made a change here
-        plt.vlines(spk * cf.model.dt, i - 0.4 + n_trials, i + 0.4 +n_trials)
-    pred = np.zeros_like(predfile["spike_v"])
-    for j in range(n_trials):
-        pred[:, j] = models.predict_spikes_glm(Vpred, est[:3], cf)
-        spk_t = pred[:,j].nonzero()[0]
-        plt.vlines(spk_t * cf.model.dt, j - 0.4, j + 0.4, color = est_clr)
-    axes.set_xlim(0,2000)
-    plt.xticks([])
-    plt.yticks([])
+    for i in range(ntrials):
+        spk_t = np.nonzero(tspk[:, i])[0] * cf.model.dt
+        plt.vlines(spk_t, i - 0.4 + ntrials, i + 0.4 + ntrials)
+    for i in range(ntrials):
+        spk_t = np.nonzero(pspk[:, i])[0] * cf.model.dt
+        plt.vlines(spk_t, i - 0.4, i + 0.4, color=est_clr)
 
-    psth_dt = 5
-    upsample = int(psth_dt/cf.model.dt)
-    pred_psth = spikes.psth(pred, upsample, 1)
-    test_psth = spikes.psth(predfile["spike_v"][:,0:n_trials], upsample, 1) #made a change here
-    t_psth = np.linspace(0, predfile["duration"], test_psth.size)
+    axes.set_xlim(5950, 8050);
 
-    
+
+    # PSTHs
     axes = plt.subplot(g[2,:])
-    plt.plot(t_psth, test_psth,'k-')
-    plt.plot( t_psth, pred_psth,est_clr ,alpha = 0.7)
-    plt.legend(('data','estimate'),loc="upper right")
-    axes.set_xlim(0,2000)
-    sns.despine(top = True, bottom = False, left = True, right = True)
-    #plt.xticks([])
-    plt.yticks([])
-    #print(predfile["spike_v"])
-    plt.show() #Can comment out for batch
+    plt.plot(t_psth, test_psth, linewidth=1, color='k', label="data")
+    plt.plot(t_psth, pred_psth, linewidth=1, color=est_clr, label="data")
+    axes.set_xlim(5950,8050)
+    #plt.show() #Can comment out for batch
 
 
-    #plt.savefig('{0}/songtwin_{1}_{2}.pdf'.format(args.outfile, model_type, rf_type))
+    plt.savefig('{0}/songtwin_{1}_{2}.pdf'.format(args.outfile, model_type, rf_type))
 
-    
-    #print(",".join(str(v) for v in paramsrow))
-    '''
-    with open(paramfile, 'a') as file:
-       writer = csv.writer(file)
-       writer.writerow(paramsrow)
-    '''

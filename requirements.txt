@@ -4,7 +4,6 @@ backcall==0.1.0
 cycler==0.10.0
 decorator==4.3.0
 -e git+git@gracula.psyc.virginia.edu:pub/dmeliza/dstrf.git@477b8146ab1f4ffb071ade1af6f71daeccfa89a4#egg=dstrf
-emcee==2.2.0
 ipykernel==4.8.2
 ipython==6.4.0
 ipython-genutils==0.2.0

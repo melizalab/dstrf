@@ -46,7 +46,7 @@ xvalidate:
 emcee:
   nburnin: 5000
   nsteps: 1000
-  nthreads: 8
+  nthreads: 18
   nwalkers: 1000
   startpos_scale: 0.001
   bounds:

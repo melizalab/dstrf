@@ -219,7 +219,6 @@ if __name__ == "__main__":
 
         if args.save_chain:
             gr = utils.gelman_rubin(sampler.chain[:, -200:, :])
-            #print(" - max autocorrelation: {:3}".format(sampler.acor.max()))
             print(" - average acceptance fraction: {:.2%}".format(sampler.acceptance_fraction.mean()))
             print(" - average Gelman-Rubin statistic (last 200 steps): {:.2}".format(gr.mean()))
             out["chain"] = sampler.chain
@@ -231,7 +230,6 @@ if __name__ == "__main__":
         out["prob"] = prob
         out["step"] = step
 
-
     if args.save_data:
         print("saving assimilation data in output archive")
         out.update(stim=data["stim"],
@@ -239,6 +237,5 @@ if __name__ == "__main__":
         if "model" in cf.data:
             k1 = simulate.get_filter(cf)[0]
             out.update(kernel=k1)
-
 
     np.savez(args.outfile, **out)

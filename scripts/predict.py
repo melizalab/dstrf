@@ -131,9 +131,18 @@ if __name__ == "__main__":
     eo = performance.corrcoef(tspike_v[::2], tspike_v[1::2], upsample, 1)
     cc = np.corrcoef(test_psth, pred_psth)[0, 1]
     print("Prediction performance (dt = {:2} ms)".format(args.binsize))
-    print("EO cc: %3.3f" % eo)
-    print("pred cc: %3.3f" % cc)
-    print("spike count: data = {}, pred = {}".format(tspike_v.sum(0).mean(), pred_spikes.sum(0).mean()))
+    print(" - EO cc: %3.3f" % eo)
+    print(" - pred cc: %3.3f" % cc)
+    print(" - spike count: data = {}, pred = {}".format(tspike_v.sum(0).mean(), pred_spikes.sum(0).mean()))
+
+    if args.save_data:
+        print("Saving prediction data to", args.save_data)
+        tdata["tspike_psth"] = test_psth
+        tdata["pspike_v"] = pred_spikes
+        tdata["pspike_psth"] = pred_psth
+        tdata["tspike_corr"] = eo
+        tdata["pspike_corr"] = cc
+        np.savez(args.save_data, **tdata)
 
     if args.params:
         import json

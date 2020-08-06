@@ -7,10 +7,7 @@ export OMP_NUM_THREADS=1
 APARAMS="-k data.trials=50"
 
 grep -v "^#" config/hg_filters.csv |
-    parallel --skip-first-line --colsep ',' python scripts/predict_simulated.py $APARAMS config/song_dynamical.yml results/phasic_{1}_samples.npz results/phasic_{1}_predict.npz
+    parallel --skip-first-line --colsep ',' python scripts/predict.py ${APARAMS} -k data.filter.rf={1} -k data.dynamics.model=models/tonic.yml --save-data results/20191013_songtwin/tonic_{1}_pred.npz config/song_dynamical.yml results/20191013_songtwin/tonic_{1}_mcmc.npz
 
 grep -v "^#" config/hg_filters.csv |
-    parallel --skip-first-line --colsep ',' python scripts/predict_simulated.py $APARAMS config/song_dynamical.yml results/tonic_{1}_samples.npz results/tonic_{1}_predict.npz
-
-grep -v "^#" config/hg_filters.csv |
-    parallel --skip-first-line --colsep ',' python scripts/predict_simulated.py $APARAMS config/song_dynamical.yml results/posp_{1}_samples.npz results/posp_{1}_predict.npz
+    parallel --skip-first-line --colsep ',' python scripts/predict.py ${APARAMS} -k data.filter.rf={1} -k data.dynamics.model=models/phasic.yml --save-data results/20191013_songtwin/phasic_{1}_pred.npz config/song_dynamical.yml results/20191013_songtwin/phasic_{1}_mcmc.npz

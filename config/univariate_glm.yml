@@ -27,11 +27,14 @@ data:
     snr: 2.0
     random_seed: 1
   dt: 10.0
-  trials: 5
+  trials: 3
+  test:
+    random_seed: 1000
+    trials: 50
 emcee:
   nburnin: 5000
   nsteps: 1000
-  nthreads: 8
+  nthreads: 18
   nwalkers: 1000
   startpos_scale: 0.001
   bounds:

@@ -16,6 +16,16 @@ def matbounds(t1, t2, tr):
     return lambda mparams: (mparams[2] > aa1 * mparams[1]) and (mparams[2] > aa2 * mparams[1])
 
 
+def matconstraint(nparams, t1, t2, tr):
+    """Returns a LinearConstraint that can be used to confine optimization to allowed region"""
+    from scipy.optimize import LinearConstraint
+    A = np.zeros((2, nparams))
+    A[0,2] = A[1,2] = 1
+    A[0,1] = (1 - np.exp(-tr / t2)) / (1 - np.exp(-tr / t1))
+    A[1,1] = (np.exp(tr / t2) - 1) / (np.exp(tr / t1) - 1)
+    return LinearConstraint(A, [0, 0], [np.inf, np.inf])
+
+
 def predict_spikes_glm(V, params, cf):
     """Predict spikes using GLM from voltage and rate/adaptation params"""
     import mat_neuron._model as mat

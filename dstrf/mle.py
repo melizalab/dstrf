@@ -27,6 +27,9 @@ class mat(object):
         self.dtype = config.floatX
         # this is needed to prevent compiler errors in clang
         config.gcc.cxxflags = "-Wno-c++11-narrowing"
+        # compiler optimizations:
+        #config.gcc.cxxflags += "-O3 -ffast-math -ftree-loop-distribution -funroll-loops -ftracer"
+        config.gcc.cxxflags += " -O3 -ffast-math -funroll-loops"
 
         if stim.ndim == 1:
             stim = np.expand_dims(stim, 0)
@@ -148,29 +151,42 @@ class mat(object):
             X /= X.std(0)
         return correlate(X, spikes)
 
+    @property
+    def n_hparams(self):
+        """Returns the number of h parameters"""
+        return self._X_spike.shape[1]
+
+    @property
+    def n_kparams(self):
+        """Returns the number of k params"""
+        return self._X_stim.shape[1]
+
     def param0(self):
         """Returns a parameter vector with a good starting guess"""
-        kdim = self._X_stim.shape[1]
         nbins, hdim, ntrials = self._X_spike.shape
         meanrate = self._spikes.sum(0).mean() / nbins
         return np.r_[np.exp(meanrate),
-                     np.zeros(hdim + kdim)].astype(self.dtype)
+                     np.zeros(hdim + self.n_kparams)].astype(self.dtype)
 
-    def estimate(self, w0=None, reg_lambda=0, reg_alpha=0, avextol=1e-6, maxiter=300, **kwargs):
+    def estimate(self, w0=None, reg_lambda=0, reg_alpha=0, gtol=1e-6, maxiter=300,
+                 method='trust-krylov', **kwargs):
         """Compute max-likelihood estimate of the model parameters
 
         w0: initial guess at parameters. If not supplied (default), sets omega
         to the mean firing rate and all other parameters to zero.
 
-        Additional arguments are passed to scipy.optimize.fmin_ncg
+        Additional arguments are passed to scipy.optimize.minimize
 
         """
         import scipy.optimize as op
         if w0 is None:
             w0 = self.param0()
 
-        return op.fmin_ncg(self.loglike, w0, self.gradient, fhess_p=self.hessianv,
-                           args=(reg_lambda, reg_alpha), avextol=avextol, maxiter=maxiter, **kwargs)
+        res = op.minimize(self.loglike, w0, method=method, jac=self.gradient, hessp=self.hessianv,
+                          args=(reg_lambda, reg_alpha),
+                          options={"gtol": gtol, "maxiter": maxiter},
+                          **kwargs)
+        return res.x
 
     def predict(self, w0, tau_params, V=None, random_state=None):
         """Generate a predicted spike train
@@ -261,6 +277,13 @@ class matfact(mat):
         self.gradient = function([w, In(reg_lambda, value=0.), In(reg_alpha, value=0.)], dL)
         self.hessianv = function([w, v, In(reg_lambda, value=0.), In(reg_alpha, value=0.)], ddLv)
 
+    @property
+    def n_kparams(self):
+        nframes, nk = self._X_stim.shape
+        nkf = self._nchannels * self._rank
+        nkt = nk // self._nchannels * self._rank
+        return nkt + nkf
+
     def param0(self, random_seed=10, random_sd=0.1):
         """Returns a parameter vector with a good starting guess
 
@@ -271,15 +294,11 @@ class matfact(mat):
         """
         from numpy import random
         random.seed(random_seed)
-        nframes, nk = self._X_stim.shape
-        nkf = self._nchannels * self._rank
-        nkt = nk // self._nchannels * self._rank
-        kdim = nkt + nkf
         nbins, hdim, ntrials = self._X_spike.shape
         meanrate = self._spikes.sum(0).mean() / nbins
         return np.r_[np.exp(meanrate),
                      np.zeros(hdim),
-                     random_sd * random.randn(kdim)].astype(self.dtype)
+                     random_sd * random.randn(self.n_kparams)].astype(self.dtype)
 
     def strf(self, w):
         """Returns the full-rank RF"""

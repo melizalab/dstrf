@@ -9,7 +9,7 @@ if sys.hexversion < 0x02070000:
 
 setup(
     name="dstrf",
-    version="0.0.1",
+    version="0.0.3",
     packages=["dstrf"],
 
     description="dstrf = strf + dynamics",

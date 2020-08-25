@@ -49,7 +49,8 @@ def hg_dstrf(cf):
               "OmegaT": "t_omega",
               "SigmaF": "f_sigma",
               "OmegaF": "f_omega",
-              "Pt": "Pt", "Amplitude": "ampl"}
+              "Pt": "Pt", 
+              "Amplitude": "ampl"}
     columns.extend(colmap.keys())
     #print(" - using params from STRF #{rf}".format(**cff))
     df = (pd.read_csv(cff["paramfile"], usecols=columns, index_col=[0])
@@ -94,8 +95,10 @@ def multivariate_glm(cf, data, random_seed=None, trials=None):
     print(" - stimulus dimension: {}". format(n_freq))
     print(" - adaptation parameters: {}". format(cf.data.adaptation))
 
-    np.random.seed(random_seed or cf.data.trial_noise.random_seed)
-    mat.random_seed(random_seed or cf.data.trial_noise.random_seed)
+    seed = random_seed or cf.data.trial_noise.random_seed
+    print(" - seed for I_noise:", seed)
+    np.random.seed(seed)
+    mat.random_seed(seed)
 
     noise_fn = noise_fns[cf.data.trial_noise.get("color", "white")]
 
@@ -142,6 +145,17 @@ def multivariate_dynamical(cf, data, random_seed=None, trials=None):
     print(" - stimulus dimension: {}". format(n_freq))
 
     pymodel = spkc.load_model(cf.data.dynamics.model)
+    if "param" in cf.data.dynamics:
+        print(" - updating parameters in model:")
+        for k, v in cf.data.dynamics.param.items():
+            old = spkc.get_param_value(pymodel, k)
+            if isinstance(v, (float, int)):
+                new = v * old.units
+            else:
+                new = spkc.parse_quantity(v)
+            spkc.set_param_value(pymodel, k, new)
+            print("    + {}: {} -> {}".format(k, old, new))
+
     biocm_params = spkc.to_array(pymodel["parameters"])
     biocm_state0 = spkc.to_array(pymodel["state"])
     biocm_model = spkc.load_module(pymodel, os.path.dirname(cf.data.dynamics.model))

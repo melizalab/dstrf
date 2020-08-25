@@ -15,7 +15,7 @@ import pandas as pd
 from scipy.optimize import differential_evolution
 from munch import Munch
 
-from dstrf import io, strf, mle, simulate, stimulus, filters, models, spikes, performance, crossvalidate, RFfit
+from dstrf import io, strf, mle, simulate, filters, models, spikes, performance, crossvalidate, RFfit
 
 
 # plotting packages
@@ -152,8 +152,8 @@ if __name__ == "__main__":
     plt.plot(t_psth, test_psth, linewidth=1, color='k', label="data")
     plt.plot(t_psth, pred_psth, linewidth=1, color=est_clr, label="data")
     axes.set_xlim(5950,8050)
-    #plt.show() #Can comment out for batch
+    plt.show() #Can comment out for batch
 
 
-    plt.savefig('{0}/songtwin_{1}_{2}.pdf'.format(args.outfile, model_type, rf_type))
+    #plt.savefig('{0}/songtwin_{1}_{2}.pdf'.format(args.outfile, model_type, rf_type))
 

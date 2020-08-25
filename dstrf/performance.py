@@ -30,3 +30,13 @@ def evenoddcorr(spikes, duration, smooth=1, dsample=10):
     even_psth = psth_spiky(evens, smooth=smooth, dsample=dsample)
     odd_psth = psth_spiky(odds, smooth=smooth, dsample=dsample)
     return np.corrcoef(even_psth, odd_psth)[0][1]
+
+
+def likelihood_ratio(spikes, model, params):
+    """This is a bastardized likelihood ratio
+
+    It compares the likelihood of the (test) data conditional on the model and
+    parameters to the likelihood of the data conditional on an adaptively
+    smoothed rate function.
+    """
+    pass

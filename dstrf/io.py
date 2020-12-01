@@ -335,7 +335,7 @@ def merge_data(seq):
         "spike_v": spike_v,
         "spike_t": [spk.nonzero()[0] for spk in spike_v.T],
         "spike_h": np.concatenate([d["spike_h"] for d in seq], axis=0),
-        "duration": sum(d["duration"] for d in seq),
+        "duration": sum(d["duration"] for d in seq)
     }
     for key in ("V", "I"):
         if key in seq[0]:

@@ -24,6 +24,11 @@ data:
   dynamics:
     model: "models/phasic.yml"
     current_scaling: 4.0
+    current_compression:
+      intercept: -1.32215976
+      slope: 0.04068182
+      V_lower: -100
+      V_upper: 0
   filter:
     fn: "hg_dstrf"
     paramfile: "config/hg_filters.csv"

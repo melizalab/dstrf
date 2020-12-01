@@ -107,6 +107,7 @@ if __name__ == "__main__":
     print(" - stim bins:", data["stim"].shape[1])
     print(" - spike bins:", data["spike_v"].shape[0])
     print(" - total spikes:", np.sum(data["spike_v"]))
+    print(" - mean spike frequency", 1000*data["spike_v"].sum()/(data["duration"]*data["ntrials"]),"HZ")
 
     # this always fails on the first try for reasons I don't understand
     try:

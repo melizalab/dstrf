@@ -82,6 +82,18 @@ def get_filter(cf):
         fn = getattr(filters, name)
         return fn(**cff)
 
+def logistic(x,model_bounds,I_bounds,params):
+        intercept = params[0]
+        slope = params[1]
+        
+        E_l = model_bounds[0]
+        g_l = model_bounds[1]
+        
+        L = -g_l*(E_l-I_bounds[0])
+        U = -g_l*(E_l-I_bounds[1])
+        exponent = np.exp(-slope*x-intercept)
+        return(L+((U-L))/(1+exponent))
+
 
 def multivariate_glm(cf, data, random_seed=None, trials=None):
     """Simulate GLM response to multivariate stimuli. Note: modifies data in place"""
@@ -186,6 +198,20 @@ def multivariate_dynamical(cf, data, random_seed=None, trials=None):
             elif "sd" in cf.data.trial_noise:
                 I_noise *= cf.data.trial_noise.sd
             I_tot = (I_stim + I_noise) * cf.data.dynamics.current_scaling
+
+            #Get arguements for logistic compression function
+            if "current_compression" in cf.data.dynamics :
+                El_bound = spkc.get_param_value(pymodel,"E_l").magnitude
+                gl_bound = spkc.get_param_value(pymodel,"g_l").magnitude
+
+                model_bounds = (El_bound,gl_bound)
+                cc = cf.data.dynamics.current_compression
+                V_bounds = (cc['V_lower'],cc['V_upper'])
+                comp_params = (cc['intercept'],cc['slope'])
+
+                #Compress I_tot with logistic function
+                I_tot = logistic(I_tot,model_bounds,V_bounds,comp_params)
+
             X = biocm_model.integrate(biocm_params, biocm_state0, I_tot, cf.data.dt, cf.model.dt)
             det = qs.detector(cf.spike_detect.thresh, det_rise_time)
             V = X[:, 0]

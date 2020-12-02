@@ -130,6 +130,8 @@ if __name__ == "__main__":
     duration_s= tdata["duration"]/1000
     HZ = pred_spikes.sum()/(duration_s*tdata["ntrials"])
 
+    Vpred = mltest.V(fit["mle"])
+
     eo = performance.corrcoef(tspike_v[::2], tspike_v[1::2], upsample, 1)
     cc = np.corrcoef(test_psth, pred_psth)[0, 1]
     print("Prediction performance (dt = {:2} ms)".format(args.binsize))
@@ -151,6 +153,7 @@ if __name__ == "__main__":
         tdata["pspike_psth"] = pred_psth
         tdata["tspike_corr"] = eo
         tdata["pspike_corr"] = cc
+        tdata["Vpred"] = Vpred
         np.savez(args.save_data, **tdata)
 
     if args.params:
@@ -169,7 +172,7 @@ if __name__ == "__main__":
             "spike_sd_pred": pred_spikes.sum(0).std(),
             "trials_data": tspike_v.shape[1],
             "trials_pred": pred_spikes.shape[1],
-            "params_in_bounds": in_bounds * 1.0,
+            "params_in_bounds": in_bounds * 1.0
         }
         with open(args.params, "wt") as fp:
             json.dump(output, fp)

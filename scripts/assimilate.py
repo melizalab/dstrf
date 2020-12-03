@@ -92,16 +92,18 @@ if __name__ == "__main__":
     stim_fun = getattr(data, cf.data.source)
     data     = stim_fun(cf)
 
+
+    if "model" in cf.data:
+        print("simulating response using {}".format(cf.data.model))
+        data_fun = getattr(simulate, cf.data.model)
+        assim_data = data_fun(cf, assim_data)
+
     try:
         p_test = cf.data.test.proportion
     except AttributeError:
         p_test = None
     assim_data = io.subselect_data(data, p_test)
 
-    if "model" in cf.data:
-        print("simulating response using {}".format(cf.data.model))
-        data_fun = getattr(simulate, cf.data.model)
-        assim_data = data_fun(cf, assim_data)
     data = io.merge_data(assim_data)
     print(" - duration:", data["duration"])
     print(" - stim bins:", data["stim"].shape[1])

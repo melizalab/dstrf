@@ -199,6 +199,9 @@ def multivariate_dynamical(cf, data, random_seed=None, trials=None):
                 I_noise *= cf.data.trial_noise.sd
             I_tot = (I_stim + I_noise) * cf.data.dynamics.current_scaling
 
+            if "current_recenter" in cf.data.dynamics:
+                I_tot -= I_tot.mean()*cf.data.dynamics.current_recenter
+
             #Get arguements for logistic compression function
             if "current_compression" in cf.data.dynamics :
                 El_bound = spkc.get_param_value(pymodel,"E_l").magnitude

@@ -74,20 +74,23 @@ if __name__ == "__main__":
     stim_fun = getattr(data, cf.data.source)
     data     = stim_fun(cf)
 
+
+
+    if "model" in cf.data:
+        print("simulating response for testing using {}".format(cf.data.model))
+        data_fun = getattr(simulate, cf.data.model)
+        test_data = data_fun(cf, test_data,
+                            random_seed=cf.data.test.random_seed,
+                            trials=cf.data.test.trials)
+        
+    
     try:
         p_test = cf.data.test.proportion
     except AttributeError:
         p_test = None
     test_data = io.subselect_data(data, p_test, first=False)
+    tdata = io.merge_data(test_data)
 
-    if "model" in cf.data:
-        print("simulating response for testing using {}".format(cf.data.model))
-        data_fun = getattr(simulate, cf.data.model)
-        tdata = io.merge_data(data_fun(cf, test_data,
-                                       random_seed=cf.data.test.random_seed,
-                                       trials=cf.data.test.trials))
-    else:
-        tdata = io.merge_data(test_data)
     print(" - duration:", tdata["duration"])
     print(" - stim bins:", tdata["stim"].shape[1])
     print(" - trials:", tdata["spike_v"].shape[1])

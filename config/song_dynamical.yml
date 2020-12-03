@@ -29,6 +29,7 @@ data:
       slope: 0.04068182
       V_lower: -100
       V_upper: 0
+    current_recenter: 1.0
   filter:
     fn: "hg_dstrf"
     paramfile: "config/hg_filters.csv"

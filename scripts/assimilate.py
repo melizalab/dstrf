@@ -92,11 +92,10 @@ if __name__ == "__main__":
     stim_fun = getattr(data, cf.data.source)
     data     = stim_fun(cf)
 
-
     if "model" in cf.data:
         print("simulating response using {}".format(cf.data.model))
         data_fun = getattr(simulate, cf.data.model)
-        assim_data = data_fun(cf, assim_data)
+        assim_data = data_fun(cf, data)
 
     try:
         p_test = cf.data.test.proportion

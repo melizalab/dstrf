@@ -74,16 +74,13 @@ if __name__ == "__main__":
     stim_fun = getattr(data, cf.data.source)
     data     = stim_fun(cf)
 
-
-
     if "model" in cf.data:
         print("simulating response for testing using {}".format(cf.data.model))
         data_fun = getattr(simulate, cf.data.model)
-        test_data = data_fun(cf, test_data,
+        test_data = data_fun(cf, data,
                             random_seed=cf.data.test.random_seed,
                             trials=cf.data.test.trials)
-        
-    
+
     try:
         p_test = cf.data.test.proportion
     except AttributeError:

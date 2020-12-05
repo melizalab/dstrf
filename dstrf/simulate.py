@@ -49,7 +49,7 @@ def hg_dstrf(cf):
               "OmegaT": "t_omega",
               "SigmaF": "f_sigma",
               "OmegaF": "f_omega",
-              "Pt": "Pt", 
+              "Pt": "Pt",
               "Amplitude": "ampl"}
     columns.extend(colmap.keys())
     #print(" - using params from STRF #{rf}".format(**cff))
@@ -85,10 +85,10 @@ def get_filter(cf):
 def logistic(x,model_bounds,I_bounds,params):
         intercept = params[0]
         slope = params[1]
-        
+
         E_l = model_bounds[0]
         g_l = model_bounds[1]
-        
+
         L = -g_l*(E_l-I_bounds[0])
         U = -g_l*(E_l-I_bounds[1])
         exponent = np.exp(-slope*x-intercept)
@@ -189,6 +189,9 @@ def multivariate_dynamical(cf, data, random_seed=None, trials=None):
         if "f_sigma" in cf.data.filter:
             I_stim *= 20 / cf.data.filter.f_sigma
         I_var = np.var(I_stim)
+        if "current_recenter" in cf.data.dynamics:
+            I_stim -= I_stim.mean() * cf.data.dynamics.current_recenter
+
         spike_t = []
         for i in range(n_trials):
             I_noise = noise_fn(I_stim.size)
@@ -198,9 +201,6 @@ def multivariate_dynamical(cf, data, random_seed=None, trials=None):
             elif "sd" in cf.data.trial_noise:
                 I_noise *= cf.data.trial_noise.sd
             I_tot = (I_stim + I_noise) * cf.data.dynamics.current_scaling
-
-            if "current_recenter" in cf.data.dynamics:
-                I_tot -= I_tot.mean()*cf.data.dynamics.current_recenter
 
             #Get arguements for logistic compression function
             if "current_compression" in cf.data.dynamics :

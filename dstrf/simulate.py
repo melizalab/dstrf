@@ -146,6 +146,7 @@ def multivariate_glm(cf, data, random_seed=None, trials=None):
 
 def multivariate_dynamical(cf, data, random_seed=None, trials=None):
     """Univariate white noise stimulus, biophysical model """
+    from spyks import analyze
     kernel = get_filter(cf)[0]
     n_freq = kernel.shape[0]
 
@@ -232,5 +233,7 @@ def multivariate_dynamical(cf, data, random_seed=None, trials=None):
         d["I"] = I_tot
         d["V"] = V
         d["state"] = X
+        d["currents"] = analyze.currents(pymodel, X)
+        d["conductances"] = analyze.conductances(pymodel, X)
 
     return data

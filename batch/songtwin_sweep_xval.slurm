@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH -n 1
-#SBATCH -t 04:00:00
+#SBATCH -t 08:00:00
 #SBATCH -o songtwin_sweep_%a_xval.log
 #SBATCH -p standard
 #SBATCH -A melizalab

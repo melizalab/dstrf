@@ -15,5 +15,9 @@ source activate dstrf
 export OMP_NUM_THREADS=1
 export THEANO_FLAGS="base_compiledir=/scratch/cdm8j/.theano_${SLURM_ARRAY_TASK_ID}"
 GLT=${SLURM_ARRAY_TASK_ID}
+BASE=/scratch/cdm8j/dstrf/results/songtwin
 
-python scripts/predict.py -k data.root=/scratch/cdm8j/dstrf_sim -k data.filter.rf=${CELL} -k data.dynamics.model=models/phasic.yml -k data.dynamics.param.g_klt=${GLT} -k data.trials=50 -p /scratch/cdm8j/dstrf/results/xval/sweep_rf${CELL}_glt${GLT}_params.json config/song_dynamical.yml /scratch/cdm8j/dstrf/results/xval/sweep_rf${CELL}_glt${GLT}_xval.npz
+CMD="python scripts/predict.py -k data.root=/scratch/cdm8j/dstrf_sim -k data.filter.rf=${CELL} -k data.dynamics.model=models/phasic.yml -k data.dynamics.param.g_klt=${GLT} -k data.trials=50 -p ${BASE}/sweep_rf${CELL}_glt${GLT}_params.json --save-data ${BASE}/sweep_rf${CELL}_glt${GLT}_pred.npz config/song_dynamical.yml ${BASE}/sweep_rf${CELL}_glt${GLT}_xval.npz"
+
+echo ${CMD}
+eval ${CMD}

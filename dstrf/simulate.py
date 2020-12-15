@@ -173,6 +173,7 @@ def multivariate_dynamical(cf, data, random_seed=None, trials=None):
     biocm_state0 = spkc.to_array(pymodel["state"])
     biocm_model = spkc.load_module(pymodel, os.path.dirname(cf.data.dynamics.model))
     print(" - dynamical model: {}".format(cf.data.dynamics.model))
+    print(" - conductances: {}".format(", ".join(spkc.conductance_names(pymodel))))
 
     np.random.seed(random_seed or cf.data.trial_noise.random_seed)
     mat.random_seed(random_seed or cf.data.trial_noise.random_seed)
@@ -233,7 +234,9 @@ def multivariate_dynamical(cf, data, random_seed=None, trials=None):
         d["I"] = I_tot
         d["V"] = V
         d["state"] = X
-        d["currents"] = analyze.currents(pymodel, X)
-        d["conductances"] = analyze.conductances(pymodel, X)
+        # this is needed to expand constants like g_l
+        ones = np.ones_like(V)
+        d["currents"] = np.column_stack([x.magnitude for x in analyze.currents(pymodel, X)])
+        d["conductances"] = np.column_stack([x.magnitude * ones for x in analyze.conductances(pymodel, X)])
 
     return data

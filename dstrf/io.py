@@ -337,7 +337,7 @@ def merge_data(seq):
         "spike_h": np.concatenate([d["spike_h"] for d in seq], axis=0),
         "duration": sum(d["duration"] for d in seq)
     }
-    for key in ("V", "I"):
+    for key in ("V", "I", "state", "currents", "conductances"):
         if key in seq[0]:
             data[key] = np.concatenate([d[key] for d in seq], axis=0)
     return data

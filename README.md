@@ -1,4 +1,10 @@
-This directory holds code for the dynamical STRF project.
+This repository contains code to run the analyses for Fehrman and Meliza (2021).
+
+The concept behind this project is the "linear-dynamical cascade" model, which combines a linear spectrotemporal RF (STRF) with a detailed dynamical model of neurons in CM, a secondary auditory area in the songbird brain. In this study, we used generalized linear models to examine the effects of a low-threshold potassium current found in some CM neurons on the encoding and adaptation properties of these neurons.
+
+This README will guide you through the process of running an example analysis. In the paper, we examined a large collection of different receptive field types, using the University of Virginia's Rivanna computing cluster to parallelize the analysis. See README_rivanna.md for more details on how to run an analysis in a similar system.
+
+## Setup (docker)
 
 ## Setup (virtualenv)
 
@@ -6,15 +12,20 @@ This directory holds code for the dynamical STRF project.
 - Install dependencies: `pip install -r dev-requirements.txt`
 - Configure ipython notebook with this virtualenv as a kernel: `python -m ipykernel install --user --name=dstrf`
 
-## Setup (anaconda):
+## Download stimuli
 
-- Create an environment and populate with
+The zebra finch songs used in our study can be retrieved from https://doi.org/10.6084/m9.figshare.13438109 as a zip file. Unpack the files into a directory called `zf_songs`. Or use your own stimuli!
 
 ## Running notebooks:
 
-- Start the jupyter notebook server (preferably in a screen): `jupyter notebook` (or `jupyter-3.5 notebook`)
+- Start the jupyter notebook server (preferably in a screen): `jupyter notebook` (or `jupyter-3.5 notebook`). You'll
 
 ## Analysis workflow
+
+
+### Assimilation
+
+
 
 ### CRCNS
 

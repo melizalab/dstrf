@@ -20,3 +20,10 @@ CMD="python scripts/assimilate.py -k data.root=/scratch/cdm8j/dstrf_sim -k data.
 
 echo ${CMD}
 eval ${CMD}
+
+# parallel equivalent for local cluster
+# CELL=58
+# DATE=`date +%Y%m%d`
+# RESDIR="results/${DATE}_songtwin_compressed"
+# mkdir -p ${RESDIR}
+# parallel echo python scripts/assimilate.py -k data.root=/home/data/dstrf_sim -k data.filter.rf=${CELL} -k data.dynamics.model=models/phasic.yml -k data.dynamics.param.g_klt={} --xval config/song_dynamical.yml ${RESDIR}/sweep_rf${CELL}_glt{}_xval.npz ::: {0..50}

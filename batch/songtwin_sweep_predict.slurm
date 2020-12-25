@@ -21,3 +21,6 @@ CMD="python scripts/predict.py -k data.root=/scratch/cdm8j/dstrf_sim -k data.fil
 
 echo ${CMD}
 eval ${CMD}
+
+# parallel equivalent:
+# parallel python scripts/predict.py -k data.root=/home/data/dstrf_sim -k data.filter.rf=${CELL} -k data.dynamics.model=models/phasic.yml -k data.dynamics.param.g_klt={} -k data.trials=50 -p ${RESDIR}/sweep_rf${CELL}_glt{}_params.json --save-data ${RESDIR}/sweep_rf${CELL}_gpt{}_pred.npz config/song_dynamical.yml ${RESDIR}/sweep_rf${CELL}_glt{}_xval.npz ::: {0..50}

@@ -22,8 +22,8 @@ data:
     dt: 10.0
   model: "multivariate_dynamical"
   dynamics:
-    model: "models/phasic.yml"
-    current_scaling: 2.0
+    model: "models/tonic.yml"
+    current_scaling: 4.0
     current_compression:
       intercept: -1.32215976
       slope: 0.04068182

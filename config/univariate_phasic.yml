@@ -23,12 +23,12 @@ data:
   model: "multivariate_dynamical"
   dynamics:
     model: "models/phasic.yml"
-    current_scaling: 2.0
+    current_scaling: 8.0
     current_compression:
       intercept: -1.32215976
       slope: 0.04068182
       V_lower: -100
-      V_upper: 0
+      V_upper: 20
     current_recenter: 1.0
   trial_noise:
     snr: 2.0

@@ -12,9 +12,8 @@ def randomize_stimuli(data, random_seed=10):
     pass
 
 
-
 def randn(cf, random_seed=None):
-    """Gaussian white noise.
+    """Gaussian white noise. Assumes responses will be simulated.
 
     cf.model.dt
     cf.data.dt
@@ -36,6 +35,31 @@ def randn(cf, random_seed=None):
         pass
 
     return [{"stim": stim, "stim_dt": cf.data.dt, "duration": cf.data.stimulus.duration}]
+
+
+def wavefiles(cf):
+    """Load stimuli from a directory of wave files. Assumes responses will be simulated.
+
+    cf.data.dt
+    cf.data.root
+    cf.data.stimulus.spectrogram.window
+    cf.data.stimulus.spectrogram.f_min
+    cf.data.stimulus.spectrogram.f_max
+    cf.data.stimulus.spectrogram.f_count
+    cf.data.stimulus.spectrogram.compress
+    cf.data.stimulus.spectrogram.gammatone
+    cf.model.filter.len
+    """
+    from dstrf import io
+    cspec = cf.data.stimulus.spectrogram
+    data = io.load_wavefiles(None,
+                             cf.data.root,
+                             step=cf.data.dt,
+                             **cspec)
+
+    io.pad_stimuli(data, 0.0, cf.model.filter.len * cf.data.dt, fill_value=0.0)
+    return data
+
 
 
 def crcns(cf):

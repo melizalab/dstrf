@@ -104,6 +104,7 @@ def multivariate_glm(cf, data, random_seed=None, trials=None):
     n_freq = kernel.shape[0]
     upsample = int(cf.data.dt / cf.model.dt)
     n_trials = trials or cf.data.trials
+    print("simulating responses using GLM")
     print(" - stimulus dimension: {}". format(n_freq))
     print(" - adaptation parameters: {}". format(cf.data.adaptation))
 
@@ -155,7 +156,12 @@ def multivariate_dynamical(cf, data, random_seed=None, trials=None):
     upsample = int(cf.data.dt / cf.model.dt)
     n_trials = trials or cf.data.trials
     det_rise_time = int(cf.spike_detect.rise_dt / cf.model.dt)
+    print("simulating responses using linear-dynamical cascade model")
     print(" - stimulus dimension: {}". format(n_freq))
+    if "current_recenter" in cf.data.dynamics:
+        print(" - convolution output will be recentered")
+    if "current_compression" in cf.data.dynamics :
+        print(" - convolution output will be compressed")
 
     pymodel = spkc.load_model(cf.data.dynamics.model)
     if "param" in cf.data.dynamics:
@@ -204,7 +210,7 @@ def multivariate_dynamical(cf, data, random_seed=None, trials=None):
                 I_noise *= cf.data.trial_noise.sd
             I_tot = (I_stim + I_noise) * cf.data.dynamics.current_scaling
 
-            #Get arguements for logistic compression function
+            #Get arguments for logistic compression function
             if "current_compression" in cf.data.dynamics :
                 El_bound = spkc.get_param_value(pymodel,"E_l").magnitude
                 gl_bound = spkc.get_param_value(pymodel,"g_l").magnitude
@@ -223,6 +229,11 @@ def multivariate_dynamical(cf, data, random_seed=None, trials=None):
             spike_times = det(V)
             spike_array = np.zeros(V.size, 'i')
             spike_array[spike_times] = 1
+            # hacky bit to make sure we have spikes in the example traces
+            if spike_array[:4000].sum() > 0:
+                d["state_trial"] = i
+                d["I"] = I_tot
+                d["state"] = X
             H = mat.adaptation(spike_array, cf.model.ataus, cf.model.dt)
             spike_v[:, i] = spike_array
             spike_h[:, :, i] = H
@@ -231,9 +242,13 @@ def multivariate_dynamical(cf, data, random_seed=None, trials=None):
         d["spike_h"] = spike_h
         d["spike_t"] = spike_t
         d["spike_dt"] = cf.model.dt
-        d["I"] = I_tot
-        d["V"] = V
-        d["state"] = X
+        # get model state for the last trial that had spikes
+        if "state" in d:
+            X = d["state"]
+        else:
+            d["state"] = X
+            d["I"] = I_tot
+        d["V"] = X[:, 0]
         # this is needed to expand constants like g_l
         ones = np.ones_like(V)
         d["currents"] = np.column_stack([x.magnitude for x in analyze.currents(pymodel, X)])

@@ -33,64 +33,6 @@ def load_crcns(cell, stim_type, root, window, step, **specargs):
     return out
 
 
-def load_rothman(cell, root, window, step, load_internals=False, **specargs):
-    """Load stimulus and response data from SNR4synhg
-
-    Additional keyword arguments are passed to load_stimulus()
-    """
-    stimroot = os.path.join(root, "stims")
-
-    out = []
-    for fname in sorted(glob.iglob(os.path.join(root, cell, "spike*"))):
-        stim_idx = int(fname[-2:])
-        stim = "stim{}-0.wav".format(stim_idx)
-        spec, dur = load_stimulus(os.path.join(stimroot, stim), window, step, **specargs)
-        spikes = []
-        for f in open(fname):
-            spks = f.strip().split()
-            spikes.append(np.asarray(spks, dtype='d'))
-        celldata = {"cell_name": cell,
-                    "stim_name": stim,
-                    "duration": dur,
-                    "stim": spec,
-                    "stim_dt": step,
-                    "spikes": spikes}
-        if load_internals:
-            npzfile = "stim{}.npz".format(stim_idx)
-            npzdata = np.load(os.path.join(root, cell, npzfile))
-            celldata["I"] = npzdata['conv']
-            celldata["V"] = npzdata['volt'][0]
-        out.append(celldata)
-    return out
-
-
-def load_rothman_rf(cell, root):
-    """Load receptive field from rothman simulation dataset"""
-    spikesroot = os.path.join(root, cell)
-    rffile = np.load(os.path.join(spikesroot, "rf.npz"))
-    return rffile['rf']
-
-
-def load_rothman_rf_params(cell, root):
-    """Load RF parameters from simulation dataset. Output can be passed to filters.hg"""
-    df = (pd.read_csv(os.path.join(root, cell, "filter_params.txt"), sep=":", header=None, index_col=0)
-            .rename(index={"Latency": "t_peak",
-                           "Frequency": "f_peak",
-                           "Sigma-t": "t_sigma",
-                           "Omega-t": "t_omega",
-                           "Sigma-f": "f_sigma",
-                           "Omega-f": "f_omega",
-                           "Pt": "Pt"}).iloc[:, 0])
-    # convert s to ms and Hz to kHz
-    df["t_peak"] *= -1000
-    df["t_sigma"] *= 1000
-    df["t_omega"] /= 1000
-    df["f_peak"] /= 1000
-    df["f_sigma"] /= 1000
-    df["f_omega"] *= 1000
-    return df
-
-
 def load_dstrf_sim(cell, root, window, step, **specargs):
     """Load stimulus and response from dstrf_sim repository"""
     import itertools
@@ -113,6 +55,19 @@ def load_dstrf_sim(cell, root, window, step, **specargs):
                         "stim_dt": step,
                         "spikes": [np.asarray(trial['events'], dtype='d') * 1000 for trial in trials]})
         return out
+
+
+def load_wavefiles(_, root, window, step, **specargs):
+    """Load acoustic stimuli from a directory of wave files - this only works for simulations"""
+    out = []
+    for stimfile in glob.glob(os.path.join(root, "*.wav")):
+        stimname = os.path.splitext(os.path.basename(stimfile))[0]
+        spec, dur = load_stimulus(stimfile, window, step, **specargs)
+        out.append({"stim_name": stimname,
+                    "duration": dur,
+                    "stim": spec,
+                    "stim_dt": step,})
+    return out
 
 
 def load_neurobank(cell, window, step, stimuli=None, alt_base=None, **specargs):
@@ -220,9 +175,9 @@ def pad_stimuli(data, before, after, fill_value=None):
         p_after = fv_after * np.ones((nf, n_after), dtype=s.dtype)
 
         d["stim"] = np.c_[p_before, s, p_after]
-
-        newtl = tl.offset(tl.subrange(d["spikes"], -before, d["duration"] + after), -before)
-        d["spikes"] = list(newtl)
+        if "spikes" in d:
+            newtl = tl.offset(tl.subrange(d["spikes"], -before, d["duration"] + after), -before)
+            d["spikes"] = list(newtl)
         d["duration"] += before + after
     return data
 

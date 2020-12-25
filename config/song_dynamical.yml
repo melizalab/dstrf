@@ -10,8 +10,8 @@ model:
     l1: 5
     l2: 5
 data:
-  source: "dstrf_sim"
-  root: "dstrf_sim"
+  source: "wavefiles"
+  root: "zf_songs"
   stimulus:
     spectrogram:
       window: 2.5

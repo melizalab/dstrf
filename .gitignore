@@ -5,3 +5,5 @@
 .ipynb_checkpoints/
 *.egg-info/
 packrat/lib*/
+build/
+venv/

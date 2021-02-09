@@ -34,6 +34,7 @@ def lagged_matrix(spec, basis):
 
     """
     from scipy.linalg import hankel
+
     if spec.ndim == 1:
         spec = np.expand_dims(spec, 0)
     nf, nt = spec.shape
@@ -44,10 +45,10 @@ def lagged_matrix(spec, basis):
     X = np.zeros((nt, nf * nbasis), dtype=spec.dtype)
     padding = np.zeros(ntau - 1, dtype=spec.dtype)
     for i in range(nf):
-        h = hankel(np.concatenate([padding, spec[i, :(-ntau + 1)]]), spec[i, -ntau:])
+        h = hankel(np.concatenate([padding, spec[i, : (-ntau + 1)]]), spec[i, -ntau:])
         if not np.isscalar(basis):
             h = np.dot(h, basis)
-        X[:, (i * nbasis):((i + 1) * nbasis)] = h
+        X[:, (i * nbasis) : ((i + 1) * nbasis)] = h
     return X
 
 
@@ -58,7 +59,7 @@ def as_vector(strf):
     time-inverted (i.e., large tau indices are short lags)
 
     """
-    return np.ravel(strf, order='C')
+    return np.ravel(strf, order="C")
 
 
 def as_matrix(k, basis):
@@ -85,7 +86,7 @@ def as_matrix(k, basis):
 def correlate(stim_design, spikes):
     """Correlation between stim (as design matrix) and spikes (i.e., spike-triggered average)
 
-    NB: divide by variance of stimulus (or multiply by inverse covariance) to recover filter """
+    NB: divide by variance of stimulus (or multiply by inverse covariance) to recover filter"""
     if spikes.ndim == 1:
         spikes = np.expand_dims(spikes, 1)
 
@@ -111,6 +112,7 @@ def cosbasis(nt, nb, peaks=None, lin=10):
     lin:   offset for nonlinear stretching of x axis (larger values -> more linear spacing)
     """
     from numpy import cos, clip, pi
+
     if peaks is None:
         peaks = np.asarray([0, nt * (1 - 1.5 / nb)])
 
@@ -118,10 +120,10 @@ def cosbasis(nt, nb, peaks=None, lin=10):
         # nonlinearity for stretching x axis
         return np.log(x + 1e-20)
 
-    y = nlin(peaks + lin)                     # nonlinear transformed first and last
-    db = (y[1] - y[0]) / (nb - 1)             # spacing between peaks
-    ctrs = np.arange(y[0], y[1] + db, db)     # centers of peaks
-    mxt = np.exp(y[1] + 2 * db) - 1e-20 - lin       # maximum time bin
+    y = nlin(peaks + lin)  # nonlinear transformed first and last
+    db = (y[1] - y[0]) / (nb - 1)  # spacing between peaks
+    ctrs = np.arange(y[0], y[1] + db, db)  # centers of peaks
+    mxt = np.exp(y[1] + 2 * db) - 1e-20 - lin  # maximum time bin
     kt0 = np.arange(0, mxt)
     nt0 = len(kt0)
 
@@ -166,7 +168,10 @@ def factorize(k, rank=1, thresh=None):
     if thresh is not None:
         rank = max(rank, sum(s > thresh))
     # TODO: flip signs if shape is opposite to input
-    return (U[:, :rank], V[:rank] * s[:rank, np.newaxis], )
+    return (
+        U[:, :rank],
+        V[:rank] * s[:rank, np.newaxis],
+    )
 
 
 def unpack_factors(v, nfreq, rank=1):
@@ -182,7 +187,9 @@ def unpack_factors(v, nfreq, rank=1):
     nfv = nfreq * rank
     ntv = nv - nfv
     ntau = int(ntv / rank)
-    assert nv == (nfreq + ntau) * rank, "dimensions of factorized/flattened RF don't match nfreq and rank"
+    assert (
+        nv == (nfreq + ntau) * rank
+    ), "dimensions of factorized/flattened RF don't match nfreq and rank"
 
     k_f = v[:nfv].reshape((nfreq, rank))
     k_t = v[nfv:].reshape((rank, ntau))

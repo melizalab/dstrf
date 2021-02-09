@@ -5,6 +5,7 @@ from __future__ import print_function, division, absolute_import
 
 import numpy as np
 
+
 def psth(spike_v, downsample=None, smooth=None):
     """Compute psth from multi-trial spike vector (dimension nbins x ntrials)
 
@@ -16,10 +17,13 @@ def psth(spike_v, downsample=None, smooth=None):
     nbins, ntrials = spike_v.shape
     if downsample is not None:
         new_bins = nbins // downsample
-        psth = np.sum(spike_v[:(new_bins * downsample),:].reshape(new_bins, ntrials, -1), axis=(1, 2))
+        psth = np.sum(
+            spike_v[: (new_bins * downsample), :].reshape(new_bins, ntrials, -1),
+            axis=(1, 2),
+        )
     else:
         psth = np.sum(spike_v, axis=1)
     if smooth is not None:
-        return gaussian_filter1d(psth.astype('d'), smooth, mode="constant", cval=0.0)
+        return gaussian_filter1d(psth.astype("d"), smooth, mode="constant", cval=0.0)
     else:
         return psth

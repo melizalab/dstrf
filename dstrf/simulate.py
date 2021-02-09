@@ -19,20 +19,17 @@ def whitenoise(N):
 def pinknoise(N):
     """ Generate N samples of pink noise (1/f power spectrum) """
     from numpy.fft import irfft
+
     uneven = N % 2
-    X = np.random.randn(N // 2 + 1 + uneven) + 1j * \
-        np.random.randn(N // 2 + 1 + uneven)
-    S = np.sqrt(np.arange(len(X)) + 1.)
+    X = np.random.randn(N // 2 + 1 + uneven) + 1j * np.random.randn(N // 2 + 1 + uneven)
+    S = np.sqrt(np.arange(len(X)) + 1.0)
     y = (irfft(X / S)).real
     if uneven:
         y = y[:-1]
     return y / np.sqrt((y ** 2).mean())
 
 
-noise_fns = {
-    "white": whitenoise,
-    "pink": pinknoise
-}
+noise_fns = {"white": whitenoise, "pink": pinknoise}
 
 
 # wrappers for filters that make them config-aware. This is only really needed
@@ -41,21 +38,26 @@ noise_fns = {
 def hg_dstrf(cf):
     """ Generate hg-type RF using parameters from the dstrf summary table """
     import pandas as pd
+
     cff = cf["data"]["filter"]
     columns = ["RF"]
-    colmap = {"Latency": "t_peak",
-              "Freq": "f_peak",
-              "SigmaT": "t_sigma",
-              "OmegaT": "t_omega",
-              "SigmaF": "f_sigma",
-              "OmegaF": "f_omega",
-              "Pt": "Pt",
-              "Amplitude": "ampl"}
+    colmap = {
+        "Latency": "t_peak",
+        "Freq": "f_peak",
+        "SigmaT": "t_sigma",
+        "OmegaT": "t_omega",
+        "SigmaF": "f_sigma",
+        "OmegaF": "f_omega",
+        "Pt": "Pt",
+        "Amplitude": "ampl",
+    }
     columns.extend(colmap.keys())
     print(" - using params from STRF #{rf}".format(**cff))
-    df = (pd.read_csv(cff["paramfile"], usecols=columns, index_col=[0])
-            .rename(columns=colmap)
-            .loc[cff["rf"]])
+    df = (
+        pd.read_csv(cff["paramfile"], usecols=columns, index_col=[0])
+        .rename(columns=colmap)
+        .loc[cff["rf"]]
+    )
     # convert s to ms and Hz to kHz
     df["t_peak"] *= 1000
     df["t_sigma"] *= 1000
@@ -68,9 +70,7 @@ def hg_dstrf(cf):
     return filters.hg(**cff)
 
 
-filter_fns = {
-    "hg_dstrf": hg_dstrf
-}
+filter_fns = {"hg_dstrf": hg_dstrf}
 
 
 def get_filter(cf):
@@ -84,21 +84,22 @@ def get_filter(cf):
 
 
 def logistic_current(x, model_bounds, I_bounds, params):
-        intercept = params[0]
-        slope = params[1]
+    intercept = params[0]
+    slope = params[1]
 
-        E_l = model_bounds[0]
-        g_l = model_bounds[1]
+    E_l = model_bounds[0]
+    g_l = model_bounds[1]
 
-        L = -g_l*(E_l-I_bounds[0])
-        U = -g_l*(E_l-I_bounds[1])
-        exponent = np.exp(-slope*x-intercept)
-        return(L+((U-L))/(1+exponent))
+    L = -g_l * (E_l - I_bounds[0])
+    U = -g_l * (E_l - I_bounds[1])
+    exponent = np.exp(-slope * x - intercept)
+    return L + ((U - L)) / (1 + exponent)
 
 
 def multivariate_glm(cf, data, random_seed=None, trials=None):
     """Simulate GLM response to multivariate stimuli. Note: modifies data in place"""
     from .models import predict_spikes_glm
+
     kernel = get_filter(cf)[0]
 
     n_taus = len(cf.model.ataus)
@@ -106,8 +107,8 @@ def multivariate_glm(cf, data, random_seed=None, trials=None):
     upsample = int(cf.data.dt / cf.model.dt)
     n_trials = trials or cf.data.trials
     print("simulating responses using GLM")
-    print(" - stimulus dimension: {}". format(n_freq))
-    print(" - adaptation parameters: {}". format(cf.data.adaptation))
+    print(" - stimulus dimension: {}".format(n_freq))
+    print(" - adaptation parameters: {}".format(cf.data.adaptation))
 
     seed = random_seed or cf.data.trial_noise.random_seed
     print(" - seed for I_noise:", seed)
@@ -120,8 +121,8 @@ def multivariate_glm(cf, data, random_seed=None, trials=None):
         nchan, nframes = d["stim"].shape
         assert nchan == n_freq, "stim channels don't match"
         nbins = nframes * upsample
-        spike_v = np.zeros((nbins, n_trials), dtype='i')
-        spike_h = np.zeros((nbins, n_taus, n_trials), dtype='d')
+        spike_v = np.zeros((nbins, n_trials), dtype="i")
+        spike_h = np.zeros((nbins, n_taus, n_trials), dtype="d")
         V_stim = strf.convolve(d["stim"], kernel)
         V_var = np.var(V_stim)
         spike_t = []
@@ -149,6 +150,7 @@ def multivariate_glm(cf, data, random_seed=None, trials=None):
 def multivariate_dynamical(cf, data, random_seed=None, trials=None):
     """Univariate white noise stimulus, biophysical model """
     from spyks import analyze
+
     kernel = get_filter(cf)[0]
     n_freq = kernel.shape[0]
 
@@ -158,10 +160,10 @@ def multivariate_dynamical(cf, data, random_seed=None, trials=None):
     n_trials = trials or cf.data.trials
     det_rise_time = int(cf.spike_detect.rise_dt / cf.model.dt)
     print("simulating responses using linear-dynamical cascade model")
-    print(" - stimulus dimension: {}". format(n_freq))
+    print(" - stimulus dimension: {}".format(n_freq))
     if "current_recenter" in cf.data.dynamics:
         print(" - convolution output will be recentered")
-    if "current_compression" in cf.data.dynamics :
+    if "current_compression" in cf.data.dynamics:
         print(" - convolution output will be compressed")
 
     pymodel = spkc.load_model(cf.data.dynamics.model)
@@ -191,8 +193,8 @@ def multivariate_dynamical(cf, data, random_seed=None, trials=None):
         nchan, nframes = d["stim"].shape
         assert nchan == n_freq, "stim channels don't match"
         nbins = nframes * upsample
-        spike_v = np.zeros((nbins, n_trials), dtype='i')
-        spike_h = np.zeros((nbins, n_taus, n_trials), dtype='d')
+        spike_v = np.zeros((nbins, n_trials), dtype="i")
+        spike_h = np.zeros((nbins, n_taus, n_trials), dtype="d")
         I_stim = strf.convolve(d["stim"], kernel)
         # normalization is based on Margot's paper
         if "f_sigma" in cf.data.filter:
@@ -211,24 +213,26 @@ def multivariate_dynamical(cf, data, random_seed=None, trials=None):
                 I_noise *= cf.data.trial_noise.sd
             I_tot = (I_stim + I_noise) * cf.data.dynamics.current_scaling
 
-            #Get arguments for logistic_current compression function
-            if "current_compression" in cf.data.dynamics :
-                El_bound = spkc.get_param_value(pymodel,"E_l").magnitude
-                gl_bound = spkc.get_param_value(pymodel,"g_l").magnitude
+            # Get arguments for logistic_current compression function
+            if "current_compression" in cf.data.dynamics:
+                El_bound = spkc.get_param_value(pymodel, "E_l").magnitude
+                gl_bound = spkc.get_param_value(pymodel, "g_l").magnitude
 
-                model_bounds = (El_bound,gl_bound)
+                model_bounds = (El_bound, gl_bound)
                 cc = cf.data.dynamics.current_compression
-                V_bounds = (cc['V_lower'],cc['V_upper'])
-                comp_params = (cc['intercept'],cc['slope'])
+                V_bounds = (cc["V_lower"], cc["V_upper"])
+                comp_params = (cc["intercept"], cc["slope"])
 
-                #Compress I_tot with logistic_current function
-                I_tot = logistic_current(I_tot,model_bounds,V_bounds,comp_params)
+                # Compress I_tot with logistic_current function
+                I_tot = logistic_current(I_tot, model_bounds, V_bounds, comp_params)
 
-            X = biocm_model.integrate(biocm_params, biocm_state0, I_tot, cf.data.dt, cf.model.dt)
+            X = biocm_model.integrate(
+                biocm_params, biocm_state0, I_tot, cf.data.dt, cf.model.dt
+            )
             det = qs.detector(cf.spike_detect.thresh, det_rise_time)
             V = X[:, 0]
             spike_times = det(V)
-            spike_array = np.zeros(V.size, 'i')
+            spike_array = np.zeros(V.size, "i")
             spike_array[spike_times] = 1
             # hacky bit to make sure we have spikes in the example traces
             if spike_array[:4000].sum() > 0:
@@ -252,7 +256,11 @@ def multivariate_dynamical(cf, data, random_seed=None, trials=None):
         d["V"] = X[:, 0]
         # this is needed to expand constants like g_l
         ones = np.ones_like(V)
-        d["currents"] = np.column_stack([x.magnitude for x in analyze.currents(pymodel, X)])
-        d["conductances"] = np.column_stack([x.magnitude * ones for x in analyze.conductances(pymodel, X)])
+        d["currents"] = np.column_stack(
+            [x.magnitude for x in analyze.currents(pymodel, X)]
+        )
+        d["conductances"] = np.column_stack(
+            [x.magnitude * ones for x in analyze.conductances(pymodel, X)]
+        )
 
     return data

@@ -20,15 +20,17 @@ class mat(object):
     dimensions (nbins, ntrials)
 
     """
+
     def __init__(self, stim, rf_tau, spike_v, spike_h, stim_dt, spike_dt, nlin="exp"):
         from theano import config
         import scipy.sparse as sps
         from dstrf.strf import lagged_matrix
+
         self.dtype = config.floatX
         # this is needed to prevent compiler errors in clang
         config.gcc.cxxflags = "-Wno-c++11-narrowing"
         # compiler optimizations:
-        #config.gcc.cxxflags += "-O3 -ffast-math -ftree-loop-distribution -funroll-loops -ftracer"
+        # config.gcc.cxxflags += "-O3 -ffast-math -ftree-loop-distribution -funroll-loops -ftracer"
         config.gcc.cxxflags += " -O3 -ffast-math -funroll-loops"
 
         if stim.ndim == 1:
@@ -51,9 +53,9 @@ class mat(object):
         self._spikes = sps.csc_matrix(spike_v)
         self._X_stim = lagged_matrix(stim, rf_tau).astype(self.dtype)
         self._X_spike = spike_h.astype(self.dtype)
-        self._interp = sps.kron(sps.eye(nframes),
-                                np.ones((upsample, 1), dtype=config.floatX),
-                                format='csc')
+        self._interp = sps.kron(
+            sps.eye(nframes), np.ones((upsample, 1), dtype=config.floatX), format="csc"
+        )
         self.select_data()
         self._make_functions()
 
@@ -72,6 +74,7 @@ class mat(object):
     def _nlin_theano(self, mu):
         import theano.tensor as T
         from theano.tensor import nnet
+
         if self._nlin == "exp":
             return T.exp(mu)
         elif self._nlin == "softplus":
@@ -89,13 +92,13 @@ class mat(object):
         nalpha = self._X_spike.shape[1]
 
         # regularization parameters
-        reg_lambda = T.scalar('lambda')
-        reg_alpha = T.scalar('alpha')
+        reg_lambda = T.scalar("lambda")
+        reg_alpha = T.scalar("alpha")
         # split out the parameter vector
-        w = T.vector('w')
+        w = T.vector("w")
         dc = w[0]
-        h = w[1:(nalpha + 1)]
-        k = w[(nalpha + 1):]
+        h = w[1 : (nalpha + 1)]
+        k = w[(nalpha + 1) :]
         # elastic net penalty
         penalty = reg_lambda * T.dot(k, k) + reg_alpha * T.sqrt(T.dot(k, k) + 0.001)
         # Vx has to be promoted to a matrix for structured_dot to work
@@ -105,19 +108,35 @@ class mat(object):
         mu = Vi - H - dc
         lmb = self._nlin_theano(mu)
         # this version of the log-likelihood is faster, but the gradient doesn't work
-        llf = lmb.sum() * self._spike_dt - sparse.sp_sum(sparse.structured_log(self._sh_Y_spike * lmb), sparse_grad=True) + penalty
+        llf = (
+            lmb.sum() * self._spike_dt
+            - sparse.sp_sum(
+                sparse.structured_log(self._sh_Y_spike * lmb), sparse_grad=True
+            )
+            + penalty
+        )
         # this version has a working gradient
-        ll = lmb.sum() * self._spike_dt - sparse.sp_sum(self._sh_Y_spike * T.log(lmb), sparse_grad=True) + penalty
+        ll = (
+            lmb.sum() * self._spike_dt
+            - sparse.sp_sum(self._sh_Y_spike * T.log(lmb), sparse_grad=True)
+            + penalty
+        )
         dL = T.grad(ll, w)
-        v = T.vector('v')
+        v = T.vector("v")
         ddLv = T.grad(T.sum(dL * v), w)
 
         self.V = function([w], Vx)
         self.V_interp = function([w], Vi)
         self.lci = function([w], mu)
-        self.loglike = function([w, In(reg_lambda, value=0.), In(reg_alpha, value=0.)], llf)
-        self.gradient = function([w, In(reg_lambda, value=0.), In(reg_alpha, value=0.)], dL)
-        self.hessianv = function([w, v, In(reg_lambda, value=0.), In(reg_alpha, value=0.)], ddLv)
+        self.loglike = function(
+            [w, In(reg_lambda, value=0.0), In(reg_alpha, value=0.0)], llf
+        )
+        self.gradient = function(
+            [w, In(reg_lambda, value=0.0), In(reg_alpha, value=0.0)], dL
+        )
+        self.hessianv = function(
+            [w, v, In(reg_lambda, value=0.0), In(reg_alpha, value=0.0)], ddLv
+        )
 
     def select_data(self, fselect=None, bselect=None):
         """Updates the shared variables containing the data to be fit
@@ -129,6 +148,7 @@ class mat(object):
 
         """
         from theano import shared
+
         if fselect is None or bselect is None:
             self._sh_interp = shared(self._interp)
             self._sh_X_stim = shared(self._X_stim)
@@ -143,6 +163,7 @@ class mat(object):
     def sta(self, center=False, scale=False):
         """Calculate the spike-triggered average"""
         from dstrf.strf import correlate
+
         spikes = self._spikes.toarray()
         X = self._X_stim.copy()
         if center:
@@ -165,11 +186,20 @@ class mat(object):
         """Returns a parameter vector with a good starting guess"""
         nbins, hdim, ntrials = self._X_spike.shape
         meanrate = self._spikes.sum(0).mean() / nbins
-        return np.r_[np.exp(meanrate),
-                     np.zeros(hdim + self.n_kparams)].astype(self.dtype)
+        return np.r_[np.exp(meanrate), np.zeros(hdim + self.n_kparams)].astype(
+            self.dtype
+        )
 
-    def estimate(self, w0=None, reg_lambda=0, reg_alpha=0, gtol=1e-6, maxiter=300,
-                 method='trust-krylov', **kwargs):
+    def estimate(
+        self,
+        w0=None,
+        reg_lambda=0,
+        reg_alpha=0,
+        gtol=1e-6,
+        maxiter=300,
+        method="trust-krylov",
+        **kwargs
+    ):
         """Compute max-likelihood estimate of the model parameters
 
         w0: initial guess at parameters. If not supplied (default), sets omega
@@ -179,13 +209,20 @@ class mat(object):
 
         """
         import scipy.optimize as op
+
         if w0 is None:
             w0 = self.param0()
 
-        res = op.minimize(self.loglike, w0, method=method, jac=self.gradient, hessp=self.hessianv,
-                          args=(reg_lambda, reg_alpha),
-                          options={"gtol": gtol, "maxiter": maxiter},
-                          **kwargs)
+        res = op.minimize(
+            self.loglike,
+            w0,
+            method=method,
+            jac=self.gradient,
+            hessp=self.hessianv,
+            args=(reg_lambda, reg_alpha),
+            options={"gtol": gtol, "maxiter": maxiter},
+            **kwargs
+        )
         return res.x
 
     def predict(self, w0, tau_params, V=None, random_state=None):
@@ -197,11 +234,12 @@ class mat(object):
 
         """
         import mat_neuron._model as mat
+
         if random_state is not None:
             mat.random_seed(random_state)
         nbins, hdim, ntrials = self._X_spike.shape
         omega = w0[0]
-        hvalues = w0[1:(1 + hdim)]
+        hvalues = w0[1 : (1 + hdim)]
         tvalues = tau_params[:hdim]
         tref = tau_params[-1]
         if self._nlin == "exp":
@@ -214,7 +252,7 @@ class mat(object):
 
 
 class matfact(mat):
-    """ The MAT dSTRF model, but with factorized (bilinear) kernel
+    """The MAT dSTRF model, but with factorized (bilinear) kernel
 
     stim: stimulus, dimensions (nchannels, nframes)
     rf_tau: number of time lags in the kernel OR a set of temporal basis functions
@@ -229,9 +267,14 @@ class matfact(mat):
     dimensions (nbins, ntrials)
 
     """
-    def __init__(self, stim, rf_tau, rf_rank, spike_v, spike_h, stim_dt, spike_dt, nlin="exp"):
+
+    def __init__(
+        self, stim, rf_tau, rf_rank, spike_v, spike_h, stim_dt, spike_dt, nlin="exp"
+    ):
         self._rank = rf_rank
-        super(matfact, self).__init__(stim, rf_tau, spike_v, spike_h, stim_dt, spike_dt, nlin)
+        super(matfact, self).__init__(
+            stim, rf_tau, spike_v, spike_h, stim_dt, spike_dt, nlin
+        )
 
     def _make_functions(self):
         """Generate the theano graph"""
@@ -245,15 +288,17 @@ class matfact(mat):
         nkt = nt * self._rank
 
         # regularization parameters
-        reg_lambda = T.scalar('lambda')
-        reg_alpha = T.scalar('alpha')
+        reg_lambda = T.scalar("lambda")
+        reg_alpha = T.scalar("alpha")
         # split out the parameter vector
-        w = T.vector('w')
+        w = T.vector("w")
         dc = w[0]
-        h = w[1:(nalpha + 1)]
-        kf = w[(nalpha + 1):(nalpha + nkf + 1)]
-        kt = w[(nalpha + nkf + 1):(nalpha + nkf + nkt + 1)]
-        k = T.dot(kf.reshape((self._nchannels, self._rank)), kt.reshape((self._rank, nt))).ravel()
+        h = w[1 : (nalpha + 1)]
+        kf = w[(nalpha + 1) : (nalpha + nkf + 1)]
+        kt = w[(nalpha + nkf + 1) : (nalpha + nkf + nkt + 1)]
+        k = T.dot(
+            kf.reshape((self._nchannels, self._rank)), kt.reshape((self._rank, nt))
+        ).ravel()
         # elastic net penalty
         penalty = reg_lambda * T.dot(k, k) + reg_alpha * T.sqrt(T.dot(k, k) + 0.001)
         # Vx has to be promoted to a matrix for structured_dot to work
@@ -263,19 +308,35 @@ class matfact(mat):
         mu = Vi - H - dc
         lmb = self._nlin_theano(mu)
         # this version of the log-likelihood is faster, but the gradient doesn't work
-        llf = lmb.sum() * self._spike_dt - sparse.sp_sum(sparse.structured_log(self._sh_Y_spike * lmb), sparse_grad=True) + penalty
+        llf = (
+            lmb.sum() * self._spike_dt
+            - sparse.sp_sum(
+                sparse.structured_log(self._sh_Y_spike * lmb), sparse_grad=True
+            )
+            + penalty
+        )
         # this version has a working gradient
-        ll = lmb.sum() * self._spike_dt - sparse.sp_sum(self._sh_Y_spike * T.log(lmb), sparse_grad=True) + penalty
+        ll = (
+            lmb.sum() * self._spike_dt
+            - sparse.sp_sum(self._sh_Y_spike * T.log(lmb), sparse_grad=True)
+            + penalty
+        )
         dL = T.grad(ll, w)
-        v = T.vector('v')
+        v = T.vector("v")
         ddLv = T.grad(T.sum(dL * v), w)
 
         self.V = function([w], Vx)
         self.V_interp = function([w], Vi)
         self.lci = function([w], mu)
-        self.loglike = function([w, In(reg_lambda, value=0.), In(reg_alpha, value=0.)], llf)
-        self.gradient = function([w, In(reg_lambda, value=0.), In(reg_alpha, value=0.)], dL)
-        self.hessianv = function([w, v, In(reg_lambda, value=0.), In(reg_alpha, value=0.)], ddLv)
+        self.loglike = function(
+            [w, In(reg_lambda, value=0.0), In(reg_alpha, value=0.0)], llf
+        )
+        self.gradient = function(
+            [w, In(reg_lambda, value=0.0), In(reg_alpha, value=0.0)], dL
+        )
+        self.hessianv = function(
+            [w, v, In(reg_lambda, value=0.0), In(reg_alpha, value=0.0)], ddLv
+        )
 
     @property
     def n_kparams(self):
@@ -293,14 +354,16 @@ class matfact(mat):
 
         """
         from numpy import random
+
         random.seed(random_seed)
         nbins, hdim, ntrials = self._X_spike.shape
         meanrate = self._spikes.sum(0).mean() / nbins
-        return np.r_[np.exp(meanrate),
-                     np.zeros(hdim),
-                     random_sd * random.randn(self.n_kparams)].astype(self.dtype)
+        return np.r_[
+            np.exp(meanrate), np.zeros(hdim), random_sd * random.randn(self.n_kparams)
+        ].astype(self.dtype)
 
     def strf(self, w):
         """Returns the full-rank RF"""
         from dstrf.strf import defactorize
+
         return defactorize(w[3:], self._nchannels, self._rank)

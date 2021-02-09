@@ -11,13 +11,11 @@ setup(
     name="dstrf",
     version="0.0.3",
     packages=["dstrf"],
-
     description="dstrf = strf + dynamics",
     long_description="",
     install_requires=[
         "numpy>=1.10",
     ],
-
     author="Tyler Robbins",
-    maintainer='C Daniel Meliza',
+    maintainer="C Daniel Meliza",
 )

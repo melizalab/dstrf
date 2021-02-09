@@ -30,11 +30,13 @@ def randn(cf, random_seed=None):
     np.random.seed(random_seed or cf.data.stimulus.random_seed)
     stim = np.random.randn(n_freq, n_frames)
     try:
-        stim[:, :cf.data.stimulus.intro] = 0
+        stim[:, : cf.data.stimulus.intro] = 0
     except AttributeError:
         pass
 
-    return [{"stim": stim, "stim_dt": cf.data.dt, "duration": cf.data.stimulus.duration}]
+    return [
+        {"stim": stim, "stim_dt": cf.data.dt, "duration": cf.data.stimulus.duration}
+    ]
 
 
 def wavefiles(cf):
@@ -51,15 +53,12 @@ def wavefiles(cf):
     cf.model.filter.len
     """
     from dstrf import io
+
     cspec = cf.data.stimulus.spectrogram
-    data = io.load_wavefiles(None,
-                             cf.data.root,
-                             step=cf.data.dt,
-                             **cspec)
+    data = io.load_wavefiles(None, cf.data.root, step=cf.data.dt, **cspec)
 
     io.pad_stimuli(data, 0.0, cf.model.filter.len * cf.data.dt, fill_value=0.0)
     return data
-
 
 
 def crcns(cf):
@@ -80,16 +79,17 @@ def crcns(cf):
     cf.model.ataus
     """
     from dstrf import io
+
     cspec = cf.data.stimulus.spectrogram
     # default option for cell when we just care about the stimuli
     cell = cf.data.get("cell", "blabla0903_2_B")
-    data = io.load_crcns(cell,
-                         cf.data.stimulus.stim_type,
-                         cf.data.root,
-                         step=cf.data.dt,
-                         **cspec)
+    data = io.load_crcns(
+        cell, cf.data.stimulus.stim_type, cf.data.root, step=cf.data.dt, **cspec
+    )
 
-    io.pad_stimuli(data, cf.data.prepadding, cf.model.filter.len * cf.data.dt, fill_value=0.0)
+    io.pad_stimuli(
+        data, cf.data.prepadding, cf.model.filter.len * cf.data.dt, fill_value=0.0
+    )
     io.preprocess_spikes(data, cf.model.dt, cf.model.ataus)
     return data
 
@@ -112,23 +112,27 @@ def neurobank(cf):
     cf.model.ataus
     """
     from dstrf import io
+
     cspec = cf.data.stimulus.spectrogram
     # default option for cell when we just care about the stimuli
     cell = cf.data.get("cell", "st348_4_6_4")
-    data = io.load_neurobank(cell,
-                             step=cf.data.dt,
-                             stimuli=cf.data.stimulus.get("include", None),
-                             alt_base=cf.data.get("root", None),
-                             **cspec)
+    data = io.load_neurobank(
+        cell,
+        step=cf.data.dt,
+        stimuli=cf.data.stimulus.get("include", None),
+        alt_base=cf.data.get("root", None),
+        **cspec
+    )
     # A lot cells in this dataset have an unequal number of trials per stimulus.
     # In principle, this would not be an issue, but because of how multiple
     # trials are handled to avoid repeating the stimulus and using up tons of
     # memory, we have to clip the extra trials
     io.clip_trials(data)
-    io.pad_stimuli(data, cf.data.prepadding, cf.model.filter.len * cf.data.dt, fill_value=0.0)
+    io.pad_stimuli(
+        data, cf.data.prepadding, cf.model.filter.len * cf.data.dt, fill_value=0.0
+    )
     io.preprocess_spikes(data, cf.model.dt, cf.model.ataus)
     return data
-
 
 
 def dstrf_sim(cf):
@@ -145,14 +149,12 @@ def dstrf_sim(cf):
     cf.model.filter.len
     """
     from dstrf import io
+
     cspec = cf.data.stimulus.spectrogram
     # default option for cell when we just care about the stimuli
     cell = cf.data.get("cell", "b-tonic-24")
 
-    data = io.load_dstrf_sim(cell,
-                             cf.data.root,
-                             step=cf.data.dt,
-                             **cspec)
+    data = io.load_dstrf_sim(cell, cf.data.root, step=cf.data.dt, **cspec)
 
     io.pad_stimuli(data, 0.0, cf.model.filter.len * cf.data.dt, fill_value=0.0)
     io.preprocess_spikes(data, cf.model.dt, cf.model.ataus)

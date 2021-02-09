@@ -23,17 +23,30 @@ def alpha(tau, amplitude, duration, dt):
 def gammadiff(tau1, tau2, amplitude, ntau, dt, **kwargs):
     """ Difference of gamma function kernel """
     from scipy.special import gamma
+
     tt = np.arange(0, ntau * dt, dt)
     xtau1 = ntau * dt / tau1
     xtau2 = ntau * dt / tau2
-    kg1 = 1 / (gamma(6) * xtau1) * (tt / xtau1)**5 * np.exp(-tt / xtau1)
-    kg2 = 1 / (gamma(6) * xtau2) * (tt / xtau2)**5 * np.exp(-tt / xtau2)
+    kg1 = 1 / (gamma(6) * xtau1) * (tt / xtau1) ** 5 * np.exp(-tt / xtau1)
+    kg2 = 1 / (gamma(6) * xtau2) * (tt / xtau2) ** 5 * np.exp(-tt / xtau2)
     kg = kg1 - kg2 / 1.5
     kg *= amplitude / np.linalg.norm(kg)
     return (kg[np.newaxis, ::-1], -tt[::-1])
 
 
-def strf(nfreq, ntau, f_max, f_peak, t_peak, ampl, f_sigma, t_sigma, f_alpha, t_alpha, **kwargs):
+def strf(
+    nfreq,
+    ntau,
+    f_max,
+    f_peak,
+    t_peak,
+    ampl,
+    f_sigma,
+    t_sigma,
+    f_alpha,
+    t_alpha,
+    **kwargs
+):
     """Construct a parametric (mexican hat) STRF
 
     nfreq: resolution of the filter in pixels
@@ -59,12 +72,31 @@ def strf(nfreq, ntau, f_max, f_peak, t_peak, ampl, f_sigma, t_sigma, f_alpha, t_
     fc = f - y
     tprime, fprime = np.meshgrid(tc, fc)
     t_sigma = t_sigma / scale
-    Gtf = (ampl * np.exp(-t_sigma**2 * tprime**2 - f_sigma**2 * fprime**2) *
-           (1 - t_alpha**2 * t_sigma**2 * tprime**2) * (1 - f_alpha**2 * f_sigma**2 * fprime**2))
+    Gtf = (
+        ampl
+        * np.exp(-(t_sigma ** 2) * tprime ** 2 - f_sigma ** 2 * fprime ** 2)
+        * (1 - t_alpha ** 2 * t_sigma ** 2 * tprime ** 2)
+        * (1 - f_alpha ** 2 * f_sigma ** 2 * fprime ** 2)
+    )
     return Gtf, tscale, f
 
 
-def hg(nfreq, ntau, f_max, f_peak, t_max, t_peak, ampl, t_sigma, f_sigma, t_omega, f_omega, Pt, Pf, **kwargs):
+def hg(
+    nfreq,
+    ntau,
+    f_max,
+    f_peak,
+    t_max,
+    t_peak,
+    ampl,
+    t_sigma,
+    f_sigma,
+    t_omega,
+    f_omega,
+    Pt,
+    Pf,
+    **kwargs
+):
     """Construct an unrotated gabor STRF
 
     nfreq: number of frequency channels in the filter
@@ -95,14 +127,31 @@ def hg(nfreq, ntau, f_max, f_peak, t_max, t_peak, ampl, t_sigma, f_sigma, t_omeg
     tc = t - x
     fc = f - y
     tprime, fprime = np.meshgrid(tc, fc)
-    H = np.exp(-0.5 * ((tprime) / t_sigma)**2) * np.cos(2 * np.pi * t_omega * (tprime) + Pt)
-    G = np.exp(-0.5 * ((fprime) / f_sigma)**2) * np.cos(2 * np.pi * f_omega * (fprime) + Pf)
+    H = np.exp(-0.5 * ((tprime) / t_sigma) ** 2) * np.cos(
+        2 * np.pi * t_omega * (tprime) + Pt
+    )
+    G = np.exp(-0.5 * ((fprime) / f_sigma) ** 2) * np.cos(
+        2 * np.pi * f_omega * (fprime) + Pf
+    )
     strf = H * G
-    strf /= np.sqrt(np.trapz(np.trapz(strf**2, axis=1)))
+    strf /= np.sqrt(np.trapz(np.trapz(strf ** 2, axis=1)))
     return np.fliplr(ampl * strf), -t[::-1], f / df
 
 
-def gabor(nfreq, ntau, f_max, f_peak, t_peak, ampl, f_sigma, t_sigma, theta, lmbda, psi, **kwargs):
+def gabor(
+    nfreq,
+    ntau,
+    f_max,
+    f_peak,
+    t_peak,
+    ampl,
+    f_sigma,
+    t_sigma,
+    theta,
+    lmbda,
+    psi,
+    **kwargs
+):
     """Construct a parametric (gabor) STRF
 
     nfreq: resolution of the filter in pixels
@@ -128,5 +177,9 @@ def gabor(nfreq, ntau, f_max, f_peak, t_peak, ampl, f_sigma, t_sigma, theta, lmb
     # Rotation
     x_theta = tprime * np.cos(theta) + fprime * np.sin(theta)
     y_theta = -tprime * np.sin(theta) + fprime * np.cos(theta)
-    gb = ampl * np.exp(-.5 * (x_theta ** 2 / t_sigma ** 2 + y_theta ** 2 / f_sigma ** 2)) * np.cos(2 * np.pi / lmbda * x_theta + psi)
+    gb = (
+        ampl
+        * np.exp(-0.5 * (x_theta ** 2 / t_sigma ** 2 + y_theta ** 2 / f_sigma ** 2))
+        * np.cos(2 * np.pi / lmbda * x_theta + psi)
+    )
     return (gb, tscale, f)

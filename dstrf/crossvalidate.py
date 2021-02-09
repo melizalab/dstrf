@@ -19,12 +19,15 @@ def estimate_and_score(estimator, ftrain, ftest, strain, stest, regargs, **kwarg
 def estimate_crossval(estimator, n_splits, regargs, **kwargs):
     """Estimate parameters and calculate score using cross-validation"""
     from sklearn.model_selection import KFold
+
     kf = KFold(n_splits=n_splits)
     iter_frames = kf.split(estimator.X_stim)
     iter_bins = kf.split(estimator.X_spike)
 
-    it = (estimate_and_score(estimator, ftrain, ftest, strain, stest, regargs, **kwargs)
-          for (ftrain, ftest), (strain, stest) in zip(iter_frames, iter_bins))
+    it = (
+        estimate_and_score(estimator, ftrain, ftest, strain, stest, regargs, **kwargs)
+        for (ftrain, ftest), (strain, stest) in zip(iter_frames, iter_bins)
+    )
 
     w, s = zip(*it)
     return np.mean(w, axis=0), np.sum(s)

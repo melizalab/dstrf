@@ -22,14 +22,20 @@ def load_crcns(cell, stim_type, root, window, step, **specargs):
     out = []
     for fname in glob.iglob(os.path.join(spikesroot, "*.toe_lis")):
         base, ext = os.path.splitext(os.path.basename(fname))
-        spec, dur = load_stimulus(os.path.join(stimroot, base + ".wav"), window, step, **specargs)
+        spec, dur = load_stimulus(
+            os.path.join(stimroot, base + ".wav"), window, step, **specargs
+        )
         spikes = tl.read(open(fname, "rt"))[0]
-        out.append({"cell_name": cell,
-                    "stim_name": base,
-                    "duration": dur,
-                    "stim": spec,
-                    "stim_dt": step,
-                    "spikes": spikes})
+        out.append(
+            {
+                "cell_name": cell,
+                "stim_name": base,
+                "duration": dur,
+                "stim": spec,
+                "stim_dt": step,
+                "spikes": spikes,
+            }
+        )
     return out
 
 
@@ -37,6 +43,7 @@ def load_dstrf_sim(cell, root, window, step, **specargs):
     """Load stimulus and response from dstrf_sim repository"""
     import itertools
     import operator
+
     stimkey = operator.itemgetter("stimulus")
 
     stimroot = os.path.join(root, "stim_bank")
@@ -44,16 +51,25 @@ def load_dstrf_sim(cell, root, window, step, **specargs):
     out = []
     with open(respfile, "rt") as fp:
         data = json.load(fp)
-        evsorted = sorted(data['pprox'], key=stimkey)
+        evsorted = sorted(data["pprox"], key=stimkey)
         for stim, trials in itertools.groupby(evsorted, stimkey):
             stimfile = stim + ".wav"
-            spec, dur = load_stimulus(os.path.join(stimroot, stimfile), window, step, **specargs)
-            out.append({"cell_name": cell,
-                        "stim_name": stim,
-                        "duration": dur,
-                        "stim": spec,
-                        "stim_dt": step,
-                        "spikes": [np.asarray(trial['events'], dtype='d') * 1000 for trial in trials]})
+            spec, dur = load_stimulus(
+                os.path.join(stimroot, stimfile), window, step, **specargs
+            )
+            out.append(
+                {
+                    "cell_name": cell,
+                    "stim_name": stim,
+                    "duration": dur,
+                    "stim": spec,
+                    "stim_dt": step,
+                    "spikes": [
+                        np.asarray(trial["events"], dtype="d") * 1000
+                        for trial in trials
+                    ],
+                }
+            )
         return out
 
 
@@ -63,10 +79,14 @@ def load_wavefiles(_, root, window, step, **specargs):
     for stimfile in glob.glob(os.path.join(root, "*.wav")):
         stimname = os.path.splitext(os.path.basename(stimfile))[0]
         spec, dur = load_stimulus(stimfile, window, step, **specargs)
-        out.append({"stim_name": stimname,
-                    "duration": dur,
-                    "stim": spec,
-                    "stim_dt": step,})
+        out.append(
+            {
+                "stim_name": stimname,
+                "duration": dur,
+                "stim": spec,
+                "stim_dt": step,
+            }
+        )
     return out
 
 
@@ -74,31 +94,45 @@ def load_neurobank(cell, window, step, stimuli=None, alt_base=None, **specargs):
     """ Load stimulus file and response data from neurobank repository """
     import itertools
     import nbank
+
     unitfile = nbank.get(cell, local_only=True, alt_base=alt_base)
     print(" - responses loaded from:", unitfile)
     # first load and collate the responses, then load the stimuli
     out = []
-    with open(unitfile, 'rU') as fp:
+    with open(unitfile, "rU") as fp:
         data = json.load(fp)
-        trials = sorted(data['pprox'], key=lambda x: (x['stimulus'], x['trial']))
-        for stimname, trials in itertools.groupby(trials, lambda x: x['stimulus']):
+        trials = sorted(data["pprox"], key=lambda x: (x["stimulus"], x["trial"]))
+        for stimname, trials in itertools.groupby(trials, lambda x: x["stimulus"]):
             if stimuli is not None and stimname not in stimuli:
                 continue
             stimfile = nbank.get(stimname, local_only=True, alt_base=alt_base)
             if stimfile is None:
                 continue
             spec, dur = load_stimulus(stimfile, window, step, **specargs)
-            out.append({"cell_name": cell,
-                        "stim_name": stimname,
-                        "duration": dur,
-                        "stim": spec,
-                        "stim_dt": step,
-                        "spikes": [np.asarray(p["events"]) * 1000. for p in trials]})
+            out.append(
+                {
+                    "cell_name": cell,
+                    "stim_name": stimname,
+                    "duration": dur,
+                    "stim": spec,
+                    "stim_dt": step,
+                    "spikes": [np.asarray(p["events"]) * 1000.0 for p in trials],
+                }
+            )
     return out
 
 
-def load_stimulus(path, window, step, f_min=0.5, f_max=8.0, f_count=30,
-                  compress=1, gammatone=False, **kwargs):
+def load_stimulus(
+    path,
+    window,
+    step,
+    f_min=0.5,
+    f_max=8.0,
+    f_count=30,
+    compress=1,
+    gammatone=False,
+    **kwargs
+):
     """Load sound stimulus and calculate spectrotemporal representation.
 
     Parameters:
@@ -114,21 +148,35 @@ def load_stimulus(path, window, step, f_min=0.5, f_max=8.0, f_count=30,
     Returns spectrogram, duration (ms)
     """
     import ewave
+
     fp = ewave.open(path, "r")
-    Fs = fp.sampling_rate / 1000.
-    osc = ewave.rescale(fp.read(), 'h')
+    Fs = fp.sampling_rate / 1000.0
+    osc = ewave.rescale(fp.read(), "h")
     if gammatone:
         import gammatone.gtgram as gg
-        Pxx = gg.gtgram(osc, Fs * 1000, window / 1000, step / 1000, f_count, f_min * 1000, f_max * 1000)
+
+        Pxx = gg.gtgram(
+            osc,
+            Fs * 1000,
+            window / 1000,
+            step / 1000,
+            f_count,
+            f_min * 1000,
+            f_max * 1000,
+        )
     else:
         import libtfr
+
         # nfft based on desired number of channels btw f_min and f_max
         nfft = int(f_count / (f_max - f_min) * Fs)
         npoints = int(Fs * window)
         if nfft < npoints:
-            raise ValueError("window size {} ({} points) too large for desired freq resolution {}. "
-                             "Decrease to {} ms or increase f_count.".format(window, f_count,
-                                                                             npoints, nfft / Fs))
+            raise ValueError(
+                "window size {} ({} points) too large for desired freq resolution {}. "
+                "Decrease to {} ms or increase f_count.".format(
+                    window, f_count, npoints, nfft / Fs
+                )
+            )
 
         nstep = int(Fs * step)
         taper = np.hanning(npoints)
@@ -162,6 +210,7 @@ def pad_stimuli(data, before, after, fill_value=None):
 
     """
     import toelis as tl
+
     for d in data:
         dt = d["stim_dt"]
         n_before = int(before / dt)
@@ -176,7 +225,9 @@ def pad_stimuli(data, before, after, fill_value=None):
 
         d["stim"] = np.c_[p_before, s, p_after]
         if "spikes" in d:
-            newtl = tl.offset(tl.subrange(d["spikes"], -before, d["duration"] + after), -before)
+            newtl = tl.offset(
+                tl.subrange(d["spikes"], -before, d["duration"] + after), -before
+            )
             d["spikes"] = list(newtl)
         d["duration"] += before + after
     return data
@@ -207,15 +258,16 @@ def preprocess_spikes(data, dt, sphist_taus):
 
     """
     from mat_neuron._model import adaptation
+
     ntaus = len(sphist_taus)
     for d in data:
         ntrials = len(d["spikes"])
         nchan, nframes = d["stim"].shape
         nbins = nframes * int(d["stim_dt"] / dt)
-        spike_v = np.zeros((nbins, ntrials), dtype='i')
-        spike_h = np.zeros((nbins, ntaus, ntrials), dtype='d')
+        spike_v = np.zeros((nbins, ntrials), dtype="i")
+        spike_h = np.zeros((nbins, ntaus, ntrials), dtype="d")
         for i, trial in enumerate(d["spikes"]):
-            idx = (trial / dt).astype('i')
+            idx = (trial / dt).astype("i")
             # make sure all spikes are in bounds
             idx = idx[(idx >= 0) & (idx < nbins)]
             spike_v[idx, i] = 1
@@ -240,7 +292,7 @@ def clip_trials(data):
 
 
 def subselect_data(seq, proportion, first=True):
-    """ Select a subset of data for fitting or prediction.
+    """Select a subset of data for fitting or prediction.
 
     seq - the data to subdivide
     proportion - the proportion to keep
@@ -290,7 +342,7 @@ def merge_data(seq):
         "spike_v": spike_v,
         "spike_t": [spk.nonzero()[0] for spk in spike_v.T],
         "spike_h": np.concatenate([d["spike_h"] for d in seq], axis=0),
-        "duration": sum(d["duration"] for d in seq)
+        "duration": sum(d["duration"] for d in seq),
     }
     for key in ("V", "I", "state", "currents", "conductances"):
         if key in seq[0]:

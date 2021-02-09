@@ -52,7 +52,7 @@ def hg_dstrf(cf):
               "Pt": "Pt",
               "Amplitude": "ampl"}
     columns.extend(colmap.keys())
-    #print(" - using params from STRF #{rf}".format(**cff))
+    print(" - using params from STRF #{rf}".format(**cff))
     df = (pd.read_csv(cff["paramfile"], usecols=columns, index_col=[0])
             .rename(columns=colmap)
             .loc[cff["rf"]])
@@ -82,7 +82,8 @@ def get_filter(cf):
         fn = getattr(filters, name)
         return fn(**cff)
 
-def logistic(x,model_bounds,I_bounds,params):
+
+def logistic_current(x, model_bounds, I_bounds, params):
         intercept = params[0]
         slope = params[1]
 
@@ -210,7 +211,7 @@ def multivariate_dynamical(cf, data, random_seed=None, trials=None):
                 I_noise *= cf.data.trial_noise.sd
             I_tot = (I_stim + I_noise) * cf.data.dynamics.current_scaling
 
-            #Get arguments for logistic compression function
+            #Get arguments for logistic_current compression function
             if "current_compression" in cf.data.dynamics :
                 El_bound = spkc.get_param_value(pymodel,"E_l").magnitude
                 gl_bound = spkc.get_param_value(pymodel,"g_l").magnitude
@@ -220,8 +221,8 @@ def multivariate_dynamical(cf, data, random_seed=None, trials=None):
                 V_bounds = (cc['V_lower'],cc['V_upper'])
                 comp_params = (cc['intercept'],cc['slope'])
 
-                #Compress I_tot with logistic function
-                I_tot = logistic(I_tot,model_bounds,V_bounds,comp_params)
+                #Compress I_tot with logistic_current function
+                I_tot = logistic_current(I_tot,model_bounds,V_bounds,comp_params)
 
             X = biocm_model.integrate(biocm_params, biocm_state0, I_tot, cf.data.dt, cf.model.dt)
             det = qs.detector(cf.spike_detect.thresh, det_rise_time)

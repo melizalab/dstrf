@@ -6,7 +6,9 @@ This README will guide you through the process of running an example analysis. I
 
 ## Setup with Docker (recommended)
 
+To start the server for the demo notebooks: `docker run -p 8888:8888 -it --rm dmeliza/dstrf:latest`. Copy and paste the URL that appears after the docker container has started.
 
+To start a shell for running scripts: `docker run -it --rm dmeliza/dstrf:latest /bin/bash`
 
 ## Setup (virtualenv)
 
